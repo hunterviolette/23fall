@@ -144,7 +144,7 @@ class HW1(CHE477):
     print(df)
     print("I really tried every angle to find a way to take plan A",
           "Like with higher base salary I can leverage more debt",
-          "However your IRA value will also count towards your balance sheet",
+          "However your IRA value will also count towards debt-to-equity ratio",
           "So plan B is the move- unless your IRA buys PYPL", sep='\n')
 
   def All():
