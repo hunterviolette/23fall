@@ -40,8 +40,8 @@ class HW1(CHE477):
                   10 # Years
                 ) 
 
-      print(f"Part {x[1]}: {x[0]}",
-            f"Part c{x[1]}: {f}",
+      print(f"Part {x[1]}: {round(x[0],3)}",
+            f"Part c{x[1]}: {round(f,3)}",
           sep='\n')
     
   def Three():
@@ -68,19 +68,19 @@ class HW1(CHE477):
           nfnb = bank - ford
         else:
           m = 12
-          fnb = df.loc[df["Year"] == x-1].reset_index().at[0,"New Balance (fiananced)"] - mp*m
-          nfnb = df.loc[df["Year"] == x-1].reset_index().at[0,"New Balance (outright)"]
+          fnb = df.loc[df["Year"] == x-1].reset_index().at[0,"Balance (fiananced)"] - mp*m
+          nfnb = df.loc[df["Year"] == x-1].reset_index().at[0,"Balance (outright)"]
 
         df = pd.concat([
               pd.DataFrame({
                 "Year": [x],
-                "New Balance (fiananced)": [HW1.spca(symbols('x'), # Future 
+                "Balance (fiananced)": [HW1.spca(symbols('x'), # Future 
                                               fnb, # Principal 
                                               i, # Interest rate
                                               1, # Compounding periods
                                               1 # Years
                                             )],
-                "New Balance (outright)": [HW1.spca(symbols('x'), # Future 
+                "Balance (outright)": [HW1.spca(symbols('x'), # Future 
                                             nfnb, # Principal 
                                             i, # Interest rate
                                             1, # Compounding periods
@@ -90,6 +90,7 @@ class HW1(CHE477):
               df
             ])
       
+      df = df.astype({"Balance (fiananced)": 'float64', "Balance (outright)": 'float64'}).round(2)
       print(f"Interest rate: {i}", df, sep='\n')
   
   def Four():
@@ -97,8 +98,8 @@ class HW1(CHE477):
     nvda = (((460 * 16.3) / (542 * 4)) - 1) * 100
     pypl = (((35 * 61) / (11 * 271 + 24 * 124)) - 1) * 100
 
-    print(f"NVDA Return: {round(nvda,2)}", 
-          f"PYPL Return: {round(pypl,2)}", 
+    print(f"NVDA %Return: {round(nvda,2)}", 
+          f"PYPL %Return: {round(pypl,2)}", 
           sep='\n')
 
   def Five():
@@ -140,9 +141,11 @@ class HW1(CHE477):
             }),
             df
           ])
-      
-    print(df)
-    print("I really tried every angle to find a way to take plan A",
+    
+    df = df.astype({"A Value": 'float64', "B Value": 'float64'}).round(2)
+
+    print(df,
+          "I really tried every angle to find a way to take plan A",
           "Like with higher base salary I can leverage more debt",
           "However your IRA value will also count towards debt-to-equity ratio",
           "So plan B is the move- unless your IRA buys PYPL", sep='\n')
