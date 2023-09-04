@@ -19,5 +19,15 @@ class CH7(object):
         iEff, (1 + (iNom / m))**m - 1
       ))[0]
 
+  @staticmethod
+  def annuity(p, i, m, n, a):
+    return solve(Eq(
+        a, 
+        p * ((i / m) * (1 + (i / m))**(n*m)) / \
+        ((1 + (i /m))**(n*m) - 1)
+      ))[0] 
+
 class CHE477(CH7):
   pass
+
+

@@ -1,7 +1,10 @@
 import pandas as pd
 from sympy import symbols
+from scipy.optimize import root_scalar
 
 from funcs import CHE477
+
+pd.set_option('display.max_rows', 25)
 
 class HW1(CHE477):
 
@@ -11,15 +14,15 @@ class HW1(CHE477):
 
     for x in [[5, 'A'], [3, 'B'], [1, 'C']]:
 
-      f = HW1.spca(symbols('x'), # Future 
+      mp = HW1.annuity(
                   p, # Principal 
                   i, # Interest rate
                   m, # Compounding periods
-                  x[0] # Years
+                  x[0], # Years
+                  symbols('x'), # annuity 
                 ) 
       
-      mp = f / (m * x[0]) # Monthly payment
-      ip = f - p # Interest paid
+      ip = mp*m*x[0] - p # Interest paid
 
       print(f'== Part {x[1]} ==',
             f'Monthly payment: {mp}', 
@@ -36,11 +39,11 @@ class HW1(CHE477):
       f = HW1.spca(symbols('x'), # Future 
                   10000, # Principal 
                   x[0], # Interest rate
-                  1, # Compounding periods
+                  12, # Compounding periods
                   10 # Years
                 ) 
 
-      print(f"Part {x[1]}: {round(x[0],3)}",
+      print(f"Part {x[1]}: {x[0]}",
             f"Part c{x[1]}: {round(f,3)}",
           sep='\n')
     
@@ -49,42 +52,43 @@ class HW1(CHE477):
     ford, bank = 33835, 60000
     m, n = 12, 5
 
-    mp = HW1.spca(symbols('x'), # Future 
+    mp = HW1.annuity(
                   ford, # Principal 
                   .039, # Interest rate
                   m, # Compounding periods
-                  5 # Years
-                ) / (m * n)
+                  n, # Years
+                  symbols('x'), # annuity 
+                ) 
 
     print(f"Monthly payment {mp}")
 
     for i in [.005, .045]:
       df = pd.DataFrame()
 
-      for x in range(1, 5+1):
+      for x in range(1, 60+1):
         if x == 1:
           m -= 1
-          fnb = bank - mp*m
+          fnb = bank - mp
           nfnb = bank - ford
         else:
           m = 12
-          fnb = df.loc[df["Year"] == x-1].reset_index().at[0,"Balance (fiananced)"] - mp*m
-          nfnb = df.loc[df["Year"] == x-1].reset_index().at[0,"Balance (outright)"]
+          fnb = df.loc[df["Month"] == x-1].reset_index().at[0,"Balance (fiananced)"] - mp
+          nfnb = df.loc[df["Month"] == x-1].reset_index().at[0,"Balance (outright)"]
 
         df = pd.concat([
               pd.DataFrame({
-                "Year": [x],
+                "Month": [x],
                 "Balance (fiananced)": [HW1.spca(symbols('x'), # Future 
                                               fnb, # Principal 
                                               i, # Interest rate
-                                              1, # Compounding periods
-                                              1 # Years
+                                              12, # Compounding periods
+                                              1/12 # Years
                                             )],
                 "Balance (outright)": [HW1.spca(symbols('x'), # Future 
                                             nfnb, # Principal 
                                             i, # Interest rate
-                                            1, # Compounding periods
-                                            1 # Years
+                                            12, # Compounding periods
+                                            1/12 # Years
                                           )]
               }), 
               df
@@ -95,11 +99,24 @@ class HW1(CHE477):
   
   def Four():
     print("==== Problem 4 ====")
-    nvda = (((460 * 16.3) / (542 * 4)) - 1) * 100
-    pypl = (((35 * 61) / (11 * 271 + 24 * 124)) - 1) * 100
+    n, m = 30 / 12, 12
 
-    print(f"NVDA %Return: {round(nvda,2)}", 
-          f"PYPL %Return: {round(pypl,2)}", 
+    def equation(var):
+      return 460 * 16.3 - (542 * 4 * (1 + (var / m))**(n*m))
+      
+    res = root_scalar(equation, bracket=[-2, 2])
+    nvdaI = res.root * 100  # Convert to percentage
+    
+    def equation(var):
+      return 35 * 61 - \
+            11 * 271 * (1 + (var / m))**(25/12*m) - \
+            24 * 124 * (1 + (var / m))**(19/12*m)
+
+    res = root_scalar(equation, bracket=[-2, 2])
+    pyplI = res.root * 100  # Convert to percentage
+
+    print(f"NVDA APR: {round(nvdaI,2)}", 
+          f"PYPL APR: {round(pyplI,2)}", 
           sep='\n')
 
   def Five():
