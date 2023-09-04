@@ -23,8 +23,8 @@ class CH7(object):
   def annuity(p, i, m, n, a):
     return solve(Eq(
         a, 
-        p * ((i / m) * (1 + (i / m))**(n*m)) / \
-        ((1 + (i /m))**(n*m) - 1)
+        p * (i / m * (1 + i / m)**(n*m)) / \
+            ((1 + i / m)**(n*m) - 1)
       ))[0] 
 
 class CHE477(CH7):
