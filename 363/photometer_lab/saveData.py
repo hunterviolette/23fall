@@ -6,7 +6,7 @@ from time import sleep
 
 while True:
     try:
-        ser = serial.Serial(port="COM3", baudrate=9600)
+        ser = serial.Serial(port="COM10", baudrate=9600)
         break
     except:
         print("Port not opened")
