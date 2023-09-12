@@ -1,10 +1,9 @@
-from funcs import CHE477
 from scipy.optimize import root
 import pandas as pd
 
 pd.options.display.float_format = '{:.2e}'.format
 
-class HW2(CHE477):
+class HW2():
     
     @staticmethod
     def One():
