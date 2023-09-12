@@ -8,7 +8,6 @@ class HW2():
     @staticmethod
     def One():
         print('==== Problem 1 ====')
-
         f = (15 + 20 + 22 + 21 + 26 + 26)*10000
                 
         def eqn(i, f=f, p=10**6, m=12, n=6):
@@ -21,9 +20,9 @@ class HW2():
     def Two():
         print('==== Problem 2 ====')
         fci = 85*10**6
-        sal, sal0 = 7*10**6, 0
+        sal, taxr = 7*10**6, .25
         rev, op = 170*10**6, 99*10**6
-        taxr = .25
+
         macrs = {
                 "1": .2, "2": .32, "3": .192,
                 "4": .1152, "5": .1152, "6": .0576,
@@ -66,8 +65,8 @@ class HW2():
     @staticmethod
     def Three():
         print('==== Problem 3 ====')
+        m2, m1, i = 12, 365, .05
         
-        m2, m1, i = 12, 365, .05 
         i2 = m2 * ((1 + i / m1)**(m1 / m2) - 1)
         
         def eqn(a, p=40000, i=i2, m=12, n=5):
@@ -105,12 +104,11 @@ class HW2():
     @staticmethod
     def Five():
         print('==== Problem 5 ====')
-        
         c2012, c2022 = 585, 816
+
         x = (c2022 / c2012)**(1/20) - 1
         print(f"Avg Inflation rate (%): {x*100}")
         
-    
     @staticmethod
     def All():
         HW2.One()
@@ -118,6 +116,5 @@ class HW2():
         HW2.Three()
         HW2.Four()
         HW2.Five()
-    
         
 HW2.All()
