@@ -29,4 +29,4 @@ try:
         print(df)
         
 except KeyboardInterrupt:
-    df.set_index('seconds').to_csv('data.csv')
+    df.set_index('seconds').to_csv('3h2.csv')
