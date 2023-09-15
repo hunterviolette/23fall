@@ -107,156 +107,159 @@ class PLAB:
                       )
     return df
 
-calib = PLAB.ReadData('calib_data')
+  @staticmethod
+  def WebApp(debugState: bool = False):
 
-app = Dash(__name__, external_stylesheets=[dbc.themes.VAPOR])
-app.layout = html.Div([
+    calib = PLAB.ReadData('calib_data')
 
-    dbc.Row([
-      dbc.Col([
-        dbc.Row([
-          html.H4("Trial Selection (multi-select)"),
-          dcc.Dropdown(options=list(PLAB.ReadData('rxn_data').trial.unique()),
-                      id='trial_dd', 
-                      multi=True, 
-                      searchable=True, 
-                      clearable=True,
-                      placeholder='All'
-                    ),
-        ]),
+    app = Dash(__name__, external_stylesheets=[dbc.themes.VAPOR])
+    app.layout = html.Div([
 
         dbc.Row([
-          html.H4("Handle Outliers"),
-          dcc.Dropdown(options=['Just Outliers', 'Remove Outliers'],
-                      placeholder = 'All trials',
-                      id='outlier_dd', 
-                      multi=False, 
-                    ),
-        ]),
+          dbc.Col([
+            dbc.Row([
+              html.H4("Trial Selection (multi-select)"),
+              dcc.Dropdown(options=list(PLAB.ReadData('rxn_data').trial.unique()),
+                          id='trial_dd', 
+                          multi=True, 
+                          searchable=True, 
+                          clearable=True,
+                          placeholder='All'
+                        ),
+            ]),
 
-      ], width=2),
+            dbc.Row([
+              html.H4("Handle Outliers"),
+              dcc.Dropdown(options=['Just Outliers', 'Remove Outliers'],
+                          placeholder = 'All trials',
+                          id='outlier_dd', 
+                          multi=False, 
+                        ),
+            ]),
 
-      dbc.Col([
-        html.H4("Calibration Table"),
-        dash_table.DataTable(
-            data = calib.to_dict('records'), 
-            columns = [{"name": i, "id": i} for i in calib.columns],
-            export_format="csv",
-            sort_action='native', 
-            page_size=10,
-            filter_action='native',
-            style_header={'backgroundColor': 'rgb(30, 30, 30)', 'color': 'white'},
-            style_data={'backgroundColor': 'rgb(50, 50, 50)','color': 'white'},
-            style_table={'overflowX': 'auto'},
-            style_cell={
-                'height': 'auto',
-                'minWidth': '180px', 'width': '180px', 'maxWidth': '180px',
-                'whiteSpace': 'normal'
-            }
-          )], width=4),
+          ], width=2),
 
-      dbc.Col([
-        html.H4("Calibration Plot"),
-        dcc.Graph(figure=px.line(calib, 'group', 'voltage').update_layout(height=335))
-        
-        ], width=6),
+          dbc.Col([
+            html.H4("Calibration Table"),
+            dash_table.DataTable(
+                data = calib.to_dict('records'), 
+                columns = [{"name": i, "id": i} for i in calib.columns],
+                export_format="csv",
+                sort_action='native', 
+                page_size=10,
+                filter_action='native',
+                style_header={'backgroundColor': 'rgb(30, 30, 30)', 'color': 'white'},
+                style_data={'backgroundColor': 'rgb(50, 50, 50)','color': 'white'},
+                style_table={'overflowX': 'auto'},
+                style_cell={
+                    'height': 'auto',
+                    'minWidth': '180px', 'width': '180px', 'maxWidth': '180px',
+                    'whiteSpace': 'normal'
+                }
+              )], width=4),
 
-      ], justify="between"),
+          dbc.Col([
+            html.H4("Calibration Plot"),
+            dcc.Graph(figure=px.line(calib, 'group', 'voltage').update_layout(height=335))
+            
+            ], width=6),
 
-    html.Div(id='mfig'),
+          ], justify="between"),
 
-], style={"padding": "10px"}) ## End of html.Div
+        html.Div(id='mfig'),
 
-@app.callback(
-  [
-    Output("mfig", 'children')
-  ],
-  [
-    Input('trial_dd', 'value'), Input('outlier_dd', 'value')
-  ]
-)
-def update(trials: List[str], outliers):
-  df, mfig = PLAB.InterpData(), []
-  df = df.loc[(df.seconds <= 240)]
+    ], style={"padding": "10px"}) ## End of html.Div
 
-  outL = ["3g", "3h", "3h2"]
-  if outliers == 'Just Outliers':
-    df = df.loc[df["trial"].isin(outL)]
-
-  elif outliers == 'Remove Outliers':
-    df = df.loc[~df["trial"].isin(outL)]
-
-  if trials not in [None, []]:
-    df = df.loc[df["trial"].isin(trials)]
-
-  mfig.append(html.H3(f"All trials", 
-                    className="bg-opacity-50 p-1 m-1 bg-info text-dark fw-bold rounded text-center"))
-  
-  mfig.append(dcc.Graph(figure=px.line(
-                                  df.rename({"interp c": "interpolated concentration (mM)"}, axis=1), 
-                                  x='seconds', 
-                                  y='interpolated concentration (mM)',
-                                  color='trial'
-                                ).update_layout(height=700)))
-
-  for t in df.trial.unique():
-    ds = df.loc[(df.trial == t)].round(3)
-    mfig.append(html.H3(f"Trial: {t}", 
-                        className="bg-opacity-50 p-1 m-1 bg-info text-dark fw-bold rounded text-center"))
-
-    mfig.append(
-
-      dbc.Row([
-
-        dbc.Col([
-          html.H5("Concentration (mM) per time plot"),
-          dcc.Graph(figure=px.line(
-                                    ds.rename({"interp c": "interpolated concentration (mM)"}, axis=1), 
-                                    x='seconds', 
-                                    y='interpolated concentration (mM)',
-                                  )
-                                )
-        ], width=7),
-
-        dbc.Col([
-          html.H5("Concentration table"),
-          dash_table.DataTable(
-            data = ds.round(4).to_dict('records'), 
-            columns = [{"name": i, "id": i} for i in ds.columns],
-            export_format="csv",
-            sort_action='native', 
-            page_size=10,
-            filter_action='native',
-            style_header={'backgroundColor': 'rgb(30, 30, 30)', 'color': 'white'},
-            style_data={'backgroundColor': 'rgb(50, 50, 50)','color': 'white'},
-            style_table={'overflowX': 'auto', 'whiteSpace': 'normal'},
-          )
-        ], width=5)
-
-      ], justify="between"),
+    @app.callback(
+      [
+        Output("mfig", 'children')
+      ],
+      [
+        Input('trial_dd', 'value'), Input('outlier_dd', 'value')
+      ]
     )
-    
-    rxnRate = round((ds.iloc[0].at['interp c'] - ds.iloc[-1].at['interp c']) / 
-                    (ds.iloc[0].at['seconds'] - ds.iloc[-1].at['seconds']), 6)
-    
-    mfig.append(html.Div([
-                  "==============",
-                  html.Br(),
-                  "Reaction Rate Equation: ",
-                  "where c = concentration, s = seconds",
-                  html.Br(),
-                  f"Reaction rate, k (mM / s) = (c_at_tMax - c_at_tMin) / (sMax - sMin)",
-                  html.Br(),
-                  f"k = ({ds.iloc[0].at['interp c']} - {ds.iloc[-1].at['interp c']}) / "
-                  f"({ds.iloc[0].at['seconds']} - {ds.iloc[-1].at['seconds']}) = " 
-                  f"{rxnRate} (mM / s)",
-                  html.Br(),
-                  "==============",
+    def update(trials: List[str], outliers):
+      df, mfig = PLAB.InterpData(), []
+      df = df.loc[(df.seconds <= 240)]
 
-                ])    
+      outL = ["3g", "3h", "3h2"]
+      if outliers == 'Just Outliers':
+        df = df.loc[df["trial"].isin(outL)]
+
+      elif outliers == 'Remove Outliers':
+        df = df.loc[~df["trial"].isin(outL)]
+
+      if trials not in [None, []]:
+        df = df.loc[df["trial"].isin(trials)]
+
+      mfig.append(html.H3(f"All trials", 
+                        className="bg-opacity-50 p-1 m-1 bg-info text-dark fw-bold rounded text-center"))
+      
+      mfig.append(dcc.Graph(figure=px.line(
+                                      df.rename({"interp c": "interpolated concentration (mM)"}, axis=1), 
+                                      x='seconds', 
+                                      y='interpolated concentration (mM)',
+                                      color='trial'
+                                    ).update_layout(height=700)))
+
+      for t in df.trial.unique():
+        ds = df.loc[(df.trial == t)].round(3)
+        mfig.append(html.H3(f"Trial: {t}", 
+                            className="bg-opacity-50 p-1 m-1 bg-info text-dark fw-bold rounded text-center"))
+
+        mfig.append(
+
+          dbc.Row([
+
+            dbc.Col([
+              html.H5("Concentration (mM) per time plot"),
+              dcc.Graph(figure=px.line(
+                                        ds.rename({"interp c": "interpolated concentration (mM)"}, axis=1), 
+                                        x='seconds', 
+                                        y='interpolated concentration (mM)',
+                                      )
+                                    )
+            ], width=7),
+
+            dbc.Col([
+              html.H5("Concentration table"),
+              dash_table.DataTable(
+                data = ds.round(4).to_dict('records'), 
+                columns = [{"name": i, "id": i} for i in ds.columns],
+                export_format="csv",
+                sort_action='native', 
+                page_size=10,
+                filter_action='native',
+                style_header={'backgroundColor': 'rgb(30, 30, 30)', 'color': 'white'},
+                style_data={'backgroundColor': 'rgb(50, 50, 50)','color': 'white'},
+                style_table={'overflowX': 'auto', 'whiteSpace': 'normal'},
               )
+            ], width=5)
 
-  return [mfig]
+          ], justify="between"),
+        )
         
+        rxnRate = round((ds.iloc[0].at['interp c'] - ds.iloc[-1].at['interp c']) / 
+                        (ds.iloc[0].at['seconds'] - ds.iloc[-1].at['seconds']), 6)
+        
+        mfig.append(html.Div([
+                      "==============",
+                      html.Br(),
+                      "Reaction Rate Equation: ",
+                      "where c = concentration, s = seconds",
+                      html.Br(),
+                      f"Reaction rate, k (mM / s) = (c_at_tMax - c_at_tMin) / (sMax - sMin)",
+                      html.Br(),
+                      f"k = ({ds.iloc[0].at['interp c']} - {ds.iloc[-1].at['interp c']}) / "
+                      f"({ds.iloc[0].at['seconds']} - {ds.iloc[-1].at['seconds']}) = " 
+                      f"{rxnRate} (mM / s)",
+                      html.Br(),
+                      "==============",
 
-app.run(host='0.0.0.0', port=8050, debug=debugState)
+                    ])    
+                  )
+
+      return [mfig]
+            
+
+    app.run(host='0.0.0.0', port=8050, debug=debugState)

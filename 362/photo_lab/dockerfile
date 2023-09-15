@@ -9,4 +9,4 @@ WORKDIR /app
 
 COPY ./src .
 
-CMD ["python", "main.py"]
+CMD ["python","-c", "from main import PLAB; PLAB.WebApp()"]
