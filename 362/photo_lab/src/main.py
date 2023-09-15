@@ -9,7 +9,7 @@ from typing import List
 import plotly.io as pio
 pio.templates.default = "plotly_dark"
 
-debugState = True
+debugState = False
 
 class PLAB:
 
