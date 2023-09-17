@@ -308,7 +308,7 @@ class PLAB:
               html.H3(f"Hanes-Woolf Plot", 
                       className="bg-opacity-50 p-1 m-1 bg-info text-dark fw-bold rounded text-center"),
               
-              html.H6(f"Vmax = .392, V0 = .3"),
+              html.H6(f"Vmax = .392, Km = .3"),
               dcc.Graph(figure=px.line(
                                 rrdf, 
                                 x='[S]', 
