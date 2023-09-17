@@ -1,20 +1,39 @@
-The only requirement to run the webserver is to have docker installed and running. https://docs.docker.com/engine/install/
+# Running the Web Server with Docker
 
+## Prerequisites
 
-If the docker engine is running, you will see it in the bottom left corner of docker desktop
-![Alt text](assets/docker_engine.png)
+- Ensure that you have Docker installed and running on your system. If not, you can [install Docker](https://docs.docker.com/engine/install/).
 
-To start the webserver, 
-  For windows users: Open the run.bat file
-    ![Alt text](assets/docker_image.png)
-    - This will build the docker image if it hasn't been built yet 
-    - After the docker image is built, it will start the webserver inside the container and expose port 8050 to localhost 
-    - You can access the webserver from any browser at http://localhost:8050/
-    - You can see the container running from docker engine
-      ![Alt text](assets/containers.png)
+    ![Docker Engine Status](assets/docker_engine.png)
+    
+    - The Docker Engine status should be visible in the bottom left corner of Docker Desktop.
 
-    - To close the webserver, simply hit ctrl-C in the terminal
-      - You may have to hit ctrl-C a few times in terminal 
-      - After you close the webserver, it will automatically delete the docker container
+## Starting the Web Server
 
-      ![Alt text](assets/ctrlC.png)
+### For Windows Users
+
+1. Open the `run.bat` file.
+
+    ![Docker Image](assets/docker_image.png)
+    
+    - This will perform the following actions:
+    
+        - Build the Docker image if it hasn't been built already.
+        
+        - Start the web server inside the Docker container.
+        
+        - Expose port 8050 to localhost.
+        
+    - You can access the web server from any browser at [http://localhost:8050/](http://localhost:8050/).
+
+    ![Docker Containers](assets/containers.png)
+    
+    - You can see the container running in Docker Engine.
+
+2. To close the web server, simply press `Ctrl-C` in the terminal.
+
+    - You may need to press `Ctrl-C` multiple times in the terminal.
+
+3. After closing the web server, it will automatically delete the Docker container.
+
+    ![Ctrl-C](assets/ctrlC.png)
