@@ -2,11 +2,15 @@
 
 ## Prerequisites
 
-- Ensure that you have Docker installed and running on your system. If not, you can [install Docker](https://docs.docker.com/engine/install/).
+1. Ensure that you have Docker installed and running on your system. If not, you can [install Docker](https://docs.docker.com/engine/install/).
 
     ![Docker Engine Status](assets/docker_engine.png)
     
     - The Docker Engine status should be visible in the bottom left corner of Docker Desktop.
+
+2. Download the ZIP of this repository and extract it to a directory
+    ![Repo](assets/dl_repo.png.png)
+
 
 ## Starting the Web Server
 
