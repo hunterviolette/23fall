@@ -9,7 +9,7 @@
     - The Docker Engine status should be visible in the bottom left corner of Docker Desktop.
 
 2. Download the ZIP of this repository and extract it to a directory
-    ![Repo](assets/dl_repo.png.png)
+    ![Repo](assets/dl_repo.png)
 
 
 ## Starting the Web Server
