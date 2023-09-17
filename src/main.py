@@ -289,18 +289,12 @@ class PLAB:
             dbc.Col([
               html.H3(f"Michaelis-Menten Plot", 
                       className="bg-opacity-50 p-1 m-1 bg-info text-dark fw-bold rounded text-center"),
-              html.H6(f"Linear Trend Fit: r={round(r_value,2)}, p={round(p_value,2)}, std_err={round(std_err,2)}"),
 
-              dcc.Graph(figure=px.line(
+              dcc.Graph(figure=px.scatter(
                                 rrdf, 
                                 x='[S]', 
                                 y='RxnRate (nmol/min)',
-                              ).add_trace(go.Scatter(
-                                            x=rrdf['[S]'],
-                                            y=slope * rrdf['[S]'] + intercept,
-                                            mode='lines',
-                                            name=f'Linear Trend',
-                              )).update_layout(height=425)
+                              ).update_layout(height=425)
                             )
             ], width=6),
             
