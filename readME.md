@@ -27,6 +27,7 @@
     - You can access the web server from any browser at [http://localhost:8050/](http://localhost:8050/).
 
     ![Docker Containers](assets/containers.png)
+    ![Docker Webserver](assets/webserver.png)
     
     - You can see the container running in Docker Engine.
 
