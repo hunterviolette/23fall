@@ -1,20 +1,21 @@
 import pandas as pd
 import plotly_express as px
+import plotly.graph_objects as go
 import dash_bootstrap_components as dbc
+
 
 from dash import Dash, html, dash_table, dcc, callback, Input, Output, State
 from scipy.interpolate import interp1d
+from scipy.stats import linregress
 from typing import List
 
 import plotly.io as pio
 pio.templates.default = "plotly_dark"
 
-debugState = False
-
 class PLAB:
 
   @staticmethod
-  def ScrapeData(path: str = '3h2'):
+  def ScrapeData(path: str = '3h2') -> pd.DataFrame:
     import serial
     import json
 
@@ -48,7 +49,14 @@ class PLAB:
         df.set_index('seconds').to_csv(f'{path}.csv')
 
   @staticmethod
-  def ReadData(directory: str):
+  def initConc() -> dict:
+    return {
+          "a": 10, "b": 5, "c": 2.5, "d": 1.25,
+          "e": .625, "f": .312, "g": .155, "h": .075
+        }
+
+  @staticmethod
+  def ReadData(directory: str) -> pd.DataFrame:
     import os
 
     df = pd.DataFrame()
@@ -65,30 +73,25 @@ class PLAB:
       df = pd.concat([df, reader], axis=0)
 
     if directory == 'calib_data':
+      df["voltage"] = df["value"]/1024*5
+      df = df.groupby('group', as_index=False).agg({"voltage": ['mean', 'max', 'min']})
+      
+      df.columns = [f'{col[0]}_{col[1]}' if col[1] != '' else col[0] for col in df.columns]
+      
+      df.rename({'voltage_mean': 'voltage'}, axis=1, inplace=True)
 
-      df = (df.groupby('group', as_index=False).mean()
-            .drop('seconds', axis=1)
-            .rename({'value': 'voltage'}, axis=1)
-          )
-      
-      conc = {
-          "a": 10, "b": 5, "c": 2.5, "d": 1.25,
-          "e": .625, "f": .312, "g": .155, "h": .075
-        }
-      
-      df["concentration (mM)"] = df["group"].map(conc)
-      df["voltage"] = df["voltage"]/1024*5
-      return df
+      df["concentration (mM)"] = df["group"].map(PLAB.initConc())
+      return df.round(4)
     
     elif directory == 'rxn_data':
-      df["value"] = df["value"]/1024*5
+      df["value"] = df["value"] / 1024 * 5
       return df.rename({'value': 'voltage'}, axis=1)
 
     else:
       print('Directory not found')
 
   @staticmethod
-  def V_to_C(df: pd.DataFrame, voltage: float):
+  def V_to_C(df: pd.DataFrame, voltage: float) -> pd.DataFrame:
 
     interp = interp1d(df['voltage'], 
                       df['concentration (mM)'],
@@ -99,17 +102,41 @@ class PLAB:
     return interp(voltage)
 
   @staticmethod
-  def InterpData():
+  def InterpData() -> pd.DataFrame:
     df = PLAB.ReadData('rxn_data')
     df["interp c"] = PLAB.V_to_C(
                         PLAB.ReadData('calib_data'), 
                         df["voltage"]
                       )
-    return df
+    return df.reset_index(drop=True)
 
   @staticmethod
-  def WebApp(debugState: bool = False):
+  def RxnRates() -> pd.DataFrame:
+    df, ndf = PLAB.InterpData(), pd.DataFrame()
+    for x in df.trial.unique():
+      d = df.loc[(df.seconds <= 240) & (df.trial == x)]
+      ndf = pd.concat([
+        ndf, 
+        pd.DataFrame({
+          "trial": [x],
+          "start time": [d.iloc[-1].at['seconds']],
+          "end time": [d.iloc[0].at['seconds']],
+          "start conc": [d.iloc[-1].at['interp c']],
+          "end conc": [d.iloc[0].at['interp c']],
+          "calib conc": [PLAB.initConc()[x[1]]]
+        })
+      ], axis=0)
+    
+    ndf["RxnRate (mM/s)"] = (ndf["end conc"] - ndf["start conc"]) / \
+                            (ndf["end time"] - ndf["start time"])
+    
+    ndf["RxnRate (nmol/min)"] = ndf['RxnRate (mM/s)']*3*60
+    return ndf[["trial", "calib conc", "RxnRate (nmol/min)", 
+                "end conc", "end time", "start conc", "start time",
+              ]]
 
+  @staticmethod
+  def WebApp(debugState: bool = False) -> None:
     calib = PLAB.ReadData('calib_data')
 
     app = Dash(__name__, external_stylesheets=[dbc.themes.VAPOR])
@@ -153,14 +180,33 @@ class PLAB:
                 style_table={'overflowX': 'auto'},
                 style_cell={
                     'height': 'auto',
-                    'minWidth': '180px', 'width': '180px', 'maxWidth': '180px',
                     'whiteSpace': 'normal'
                 }
               )], width=4),
 
           dbc.Col([
             html.H4("Calibration Plot"),
-            dcc.Graph(figure=px.line(calib, 'group', 'voltage').update_layout(height=335))
+            dcc.Graph(figure=(go.Figure()
+                      .add_trace(go.Scatter(
+                          x=calib["group"],
+                          y=calib["voltage"],
+                          mode='lines+markers', 
+                          name='average voltage'
+                        ))
+                      .add_trace(go.Scatter(
+                          x=calib["group"],
+                          y=calib["voltage_max"],
+                          mode='markers', 
+                          name='max value'
+                        ))
+                      .add_trace(go.Scatter(
+                          x=calib["group"],
+                          y=calib["voltage_min"],
+                          mode='markers', 
+                          name='min value'
+                          ))
+                      ).update_layout(height=335)
+                    )
             
             ], width=6),
 
@@ -178,29 +224,101 @@ class PLAB:
         Input('trial_dd', 'value'), Input('outlier_dd', 'value')
       ]
     )
-    def update(trials: List[str], outliers):
-      df, mfig = PLAB.InterpData(), []
-      df = df.loc[(df.seconds <= 240)]
+    def update(trials: List[str], outliers: str):
+      df, mfig = PLAB.InterpData().rename({"calib c": "[S]"}, axis=1), []
+      df, rrdf = df.loc[(df.seconds <= 240)], PLAB.RxnRates().rename({"calib conc": "[S]"}, axis=1) 
 
       outL = ["3g", "3h", "3h2"]
       if outliers == 'Just Outliers':
         df = df.loc[df["trial"].isin(outL)]
+        rrdf = rrdf.loc[rrdf["trial"].isin(outL)]
 
       elif outliers == 'Remove Outliers':
         df = df.loc[~df["trial"].isin(outL)]
+        rrdf = rrdf.loc[~rrdf["trial"].isin(outL)]
 
       if trials not in [None, []]:
         df = df.loc[df["trial"].isin(trials)]
-
-      mfig.append(html.H3(f"All trials", 
-                        className="bg-opacity-50 p-1 m-1 bg-info text-dark fw-bold rounded text-center"))
+        rrdf = rrdf.loc[rrdf["trial"].isin(trials)]
       
-      mfig.append(dcc.Graph(figure=px.line(
-                                      df.rename({"interp c": "interpolated concentration (mM)"}, axis=1), 
-                                      x='seconds', 
-                                      y='interpolated concentration (mM)',
-                                      color='trial'
-                                    ).update_layout(height=700)))
+      slope, intercept, r_value, p_value, std_err = linregress(rrdf['[S]'], rrdf['RxnRate (nmol/min)'])
+      rrdf["[S] / v"] = 1 / .392 * rrdf["[S]"] + .3
+
+      mfig.append(
+        
+          dbc.Row([
+
+            dbc.Col([
+              html.H3(f"Substrate concentration [S] per time (All trials)", 
+                        className="bg-opacity-50 p-1 m-1 bg-info text-dark fw-bold rounded text-center"),
+
+              dcc.Graph(figure=px.line(
+                                df.rename({"interp c": "interpolated concentration (mM)"}, axis=1), 
+                                x='seconds', 
+                                y='interpolated concentration (mM)',
+                                color='trial'
+                              ).update_layout(height=450)
+                            )
+            ], width=7),
+            
+            dbc.Col([
+              html.H3(f"Reaction Rate Table", 
+                      className="bg-opacity-50 p-1 m-1 bg-info text-dark fw-bold rounded text-center"),
+              
+              dash_table.DataTable(
+                data = rrdf.round(4).to_dict('records'), 
+                columns = [{"name": i, "id": i} for i in rrdf.columns],
+                export_format="csv",
+                sort_action='native', 
+                page_size=12,
+                filter_action='native',
+                style_header={'backgroundColor': 'rgb(30, 30, 30)', 'color': 'white'},
+                style_data={'backgroundColor': 'rgb(50, 50, 50)','color': 'white'},
+                style_table={'overflowX': 'auto', 'whiteSpace': 'normal'},
+              )
+            ], width=5)
+
+          ], justify="between"),
+
+        )
+
+      mfig.append(
+        
+          dbc.Row([
+
+            dbc.Col([
+              html.H3(f"Michaelis-Menten Plot", 
+                      className="bg-opacity-50 p-1 m-1 bg-info text-dark fw-bold rounded text-center"),
+              html.H6(f"Linear Trend Fit: r={round(r_value,2)}, p={round(p_value,2)}, std_err={round(std_err,2)}"),
+
+              dcc.Graph(figure=px.line(
+                                rrdf, 
+                                x='[S]', 
+                                y='RxnRate (nmol/min)',
+                              ).add_trace(go.Scatter(
+                                            x=rrdf['[S]'],
+                                            y=slope * rrdf['[S]'] + intercept,
+                                            mode='lines',
+                                            name=f'Linear Trend',
+                              )).update_layout(height=425)
+                            )
+            ], width=6),
+            
+            dbc.Col([
+              html.H3(f"Hanes-Woolf Plot", 
+                      className="bg-opacity-50 p-1 m-1 bg-info text-dark fw-bold rounded text-center"),
+              
+              html.H6(f"Vmax = .392, V0 = .3"),
+              dcc.Graph(figure=px.line(
+                                rrdf, 
+                                x='[S]', 
+                                y='[S] / v',
+                            ))
+            ], width=6)
+
+          ], justify="between"),
+
+        )
 
       for t in df.trial.unique():
         ds = df.loc[(df.trial == t)].round(3)
