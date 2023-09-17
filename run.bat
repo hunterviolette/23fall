@@ -12,4 +12,3 @@ if %errorlevel% neq 0 (
 docker build -t photo_lab_image .
 docker run -p 8050:8050 -it --rm --name photo_lab photo_lab_image
 echo Deleting docker container
-pause
