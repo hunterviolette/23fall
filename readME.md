@@ -25,16 +25,15 @@
         - Expose port 8050 to localhost.
         
     - You can access the web server from any browser at [http://localhost:8050/](http://localhost:8050/).
-
-    ![Docker Containers](assets/containers.png)
     ![Docker Webserver](assets/webserver.png)
     
     - You can see the container running in Docker Engine.
+    ![Docker Containers](assets/containers.png)
+
 
 2. To close the web server, simply press `Ctrl-C` in the terminal.
 
     - You may need to press `Ctrl-C` multiple times in the terminal.
 
 3. After closing the web server, it will automatically delete the Docker container.
-
     ![Ctrl-C](assets/ctrlC.png)
