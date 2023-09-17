@@ -37,3 +37,5 @@
 
 3. After closing the web server, it will automatically delete the Docker container.
     ![Ctrl-C](assets/ctrlC.png)
+
+4. Docker uses RAM to virtualize containers and may use RAM even when no containers are running. If you are finished using docker, it may be best to restart your computer so the docker engine is no longer running. 
