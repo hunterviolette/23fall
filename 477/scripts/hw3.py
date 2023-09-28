@@ -60,6 +60,7 @@ class ch10eqns:
 class HW3(ch10eqns):
     
     def OneND():
+        print('==== Problem 1 ====')
         land = 2
         fci = 5.7e9
         nSL = 16 # straight line depreciation, years
@@ -133,8 +134,10 @@ class HW3(ch10eqns):
             if x <= 16 and x>5: d = macrs[str(x-5)] 
             else: d = 0
             
-            startup = {1: 1.71, 2: 1.14, 3: 1.14, 
-                       4: 1.14, 5:.6}
+            startup = {
+                        1: 1.71, 2: 1.14, 3: 1.14, 
+                        4: 1.14, 5:.6
+                    }
             
             if x < 6: rev, exp = -startup[x] * 1e9, 0
             else: rev, exp = 2.185e9, 1.1e9
@@ -177,8 +180,22 @@ class HW3(ch10eqns):
                 f'IRR: {(df[col].mean() / fci).__round__(2)}',
                 sep='\n'
             )
+        
+        print("=== Profitability discussion ===",
+            'The project is profitable with an ROI of 15% when the cash flow is not discounted',
+            'However when the cash flow is discounted, the payback period is longer than project life',
+            'Present value ratio is < 1 and the interal rate of return is 1%',
+            'Due to the problems of profitability to justify risk, it is not feasible in current state',
+            "=== Estimation vary over time ===",
+            'Estimates are based off supply and demand and with changes in either can also lead to',
+            'significant changes in predicted values. Changes in global economy can also have significant',
+            'impact on the project from changes in interest rates for lending, price of raw materials, energy cost, etc',
+            "=== Comparison of ROI/IRR of depreciation options ===",
+            'There was no effect on the overall ROI/IRR from the depreciation method used',
+            sep='\n')
             
     def Two():
+        print('==== Problem 2 ====')
         priceG = 2.1e4
         fuelG = (6.5e3/30 * 2.5).__round__(2)
         maintG = 368
@@ -187,9 +204,13 @@ class HW3(ch10eqns):
         fuelE = ((6.5e3/28)*7*.17).__round__(2)
         maintE = 203
         
-        for z in [[.04, 10], [.1, 10], [.04, 15]]:
+        for z in [[.04, 10], [.1, 10], [.04, 15], [0, 10]]:
             print('=====================')
-            for x in [[priceG, fuelG, maintG, 'Gas Car'], [priceE, fuelE, maintE, 'Electric Car']]:
+            for x in [[priceE, fuelE, maintE, 'Electric Car'], [priceG, fuelG, maintG, 'Gas Car']]:
+                if z[0] == 0:
+                    z[0] = .04
+                    if x[3] == 'Electric Car': x[0] = 2.76e4
+                                
                 yoc = x[1] + x[2]
                 npv = (-x[0] - yoc * (((1 + z[0])**z[1] - 1) / (z[0] * (1 + z[0])**z[1]))).__round__(2)
                 cc = (x[0] * (((1 + z[0] )**z[1] - 1) / ((1 + z[0])**z[1] - 1))).__round__(2)
@@ -204,8 +225,20 @@ class HW3(ch10eqns):
                     f"Equivalent annual operating cost: {eaoc}",
                     sep='\n'
                 )
-                
+        
+        print('=================='
+              '=== Which option would you recommend ===',
+              'The EAOC for the electric car is lower, therefore it is the better option',
+              '=== Interest rate of 10% ===',
+              'The EAOC for the gas car is lower, therefore the better option',
+              '=== Lifetime of 15 years ===',
+              'With 15 years of ownership, the electric car has the lower EAOC, making it the better option',
+              '=== Expiration of tax credit ===',
+              'If the federal tax credit expired, the gas car would have the lower EAOC, making it the better option',
+              sep='\n')
+
     def Three():
+        
         pA, pB = 5.5e4, 7.5e4
         acA, acB = 1.62e4, 1.245e4
         
@@ -214,4 +247,15 @@ class HW3(ch10eqns):
                 - (pB * ((i * (1 + i)**n) / ((1 + i)**n - 1)) + yocB)
             
         sol = root(eqn, x0=10)
-        print(f"Years: {sol.x[0].__round__(0)}")
+        print('==== Problem 3 ====',
+              f"Years: {sol.x[0].__round__(0)}",
+              sep='\n')
+
+    def All():
+        HW3.OneND()
+        HW3.OneD()
+        HW3.Two()
+        HW3.Three()
+
+
+HW3.All()
