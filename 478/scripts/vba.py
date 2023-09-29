@@ -12,10 +12,9 @@ df = pd.DataFrame([
     {'species': 'o2', 'tmax': 2000, 'cp_r': 3.535, 'a': 3.639, 'b': 0.506, 'c': 0, 'd': -0.227, 'hf':0, 'mw': 32},
     {'species': 'n2', 'tmax': 2000, 'cp_r': 3.502, 'a': 3.28, 'b': 0.593, 'c': 0, 'd': 0.04, 'hf':0, 'mw': 28.013},
     {'species': 'co2', 'tmax': 2000, 'cp_r': 4.467, 'a': 5.457, 'b': 1.045, 'c': 0, 'd': -1.157, 'hf':-393.509, 'mw':44},
-    {'species': 'h2o_l', 'tmax': 2000, 'cp_r': 3.502, 'a': 3.28, 'b': 0.593, 'c': 0, 'd': 0.04, 'hf':-285.830, 'mw':18.02},
+    {'species': 'h2o_l', 'tmax': 2000, 'cp_r': 9.069, 'a': 8.712, 'b': 1.25, 'c': -.18, 'd': 0, 'hf':-285.830, 'mw':18.02},
     {'species': 'h2o_v', 'tmax': 2000, 'cp_r': 4.038, 'a': 3.47, 'b': 1.45, 'c': 0, 'd': .121, 'hf':-241.818, 'mw':18.02},
     {'species': 'ch4', 'tmax': 1500, 'cp_r': 4.217, 'a': 1.702, 'b': 9.081, 'c': -2.164, 'd': 0, 'hf':-74.52, 'mw':16},
-    {'species': 'wood', 'tmax': 2000, 'cp_r': 3.502, 'a': 3.28, 'b': 0.593, 'c': 0, 'd': 0.04, 'hf':200,'mw':217.6},
 ])
 
 t, tRef = q(75, 'degF').to('K').magnitude, q(25, 'degF').to('K').magnitude
@@ -31,6 +30,14 @@ for i, x in df.iterrows():
     mass_h = (molar_h / q(x["mw"], 'gram/mol')).to('Btu/lb')
     
     df.loc[df["species"] == x["species"], 'enthalpy (Btu/lb)'] = mass_h.magnitude
+
+df = pd.concat([df, 
+                pd.DataFrame({
+                    "species": ['wood'],
+                    "enthalpy (Btu/lb)": [df[df.species == 'h2o_l'].iloc[-1]['enthalpy (Btu/lb)'] / 3],
+                    "mw": [217.6]
+                })
+            ])
 
 flows = pd.DataFrame([
         {'ch4': 3100, 'co2': 400, 'n2': 9e4, 'o2': 2.7e4, 'h2o_l': 2e3},
