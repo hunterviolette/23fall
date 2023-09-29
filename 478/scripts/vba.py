@@ -3,8 +3,10 @@ import pandas as pd
 import pint
 uReg = pint.UnitRegistry(autoconvert_offset_to_baseunit = True)
 uReg.default_format = "~P"
-q = uReg.Quantity
 
+uReg.define('MMBtu = 1e6 * Btu')
+
+q = uReg.Quantity
 
 df = pd.DataFrame([
     {'species': 'o2', 'tmax': 2000, 'cp_r': 3.535, 'a': 3.639, 'b': 0.506, 'c': 0, 'd': -0.227, 'hf':0, 'mw': 32},
@@ -19,7 +21,6 @@ df = pd.DataFrame([
 t, tRef = q(75, 'degF').to('K').magnitude, q(25, 'degF').to('K').magnitude
 
 for i, x in df.iterrows():
-
     molar_h = q(x["hf"], 'kJ/mol') + q(8.314, 'J/mol/K').to('kJ/mol/K') * \
                                         q( x['a'] * (t - tRef) + \
                                            x['b']*10**-3 / 2 * (t**2 - tRef**2) + \
@@ -29,11 +30,10 @@ for i, x in df.iterrows():
     
     mass_h = (molar_h / q(x["mw"], 'gram/mol')).to('Btu/lb')
     
-    df.loc[df["species"] == x["species"], 'enthalpy (BTU/lb)'] = mass_h.magnitude
-
+    df.loc[df["species"] == x["species"], 'enthalpy (Btu/lb)'] = mass_h.magnitude
 
 flows = pd.DataFrame([
-        {'c4h': 3100, 'co2': 400, 'n2': 9e4, 'o2': 2.7e4, 'h2o_l': 2e3},
+        {'ch4': 3100, 'co2': 400, 'n2': 9e4, 'o2': 2.7e4, 'h2o_l': 2e3},
         {'wood': 4e4, 'h2o_v': 3e4}
     ], index=['s1', 's2']).fillna(0)
 
@@ -42,4 +42,15 @@ flows["total"] = flows.sum(axis=1)
 for col in flows.columns.difference(['total']):
     flows[col] = flows[col] / flows['total'] 
  
-print(df, flows, sep='\n')
+print('=== Enthalpy Calculation ===', df, '=== Component Flows ===', flows, sep='\n')
+s1, s2 = 0, 0
+for i, x in flows.iterrows():
+    for key in [x for x in x.keys() if x != 'total']:
+        compH = df[df.species == key].iloc[-1]['enthalpy (Btu/lb)'] * x[key]
+        if i == 's1': s1 += compH
+        else: s2 += compH
+
+s1_H_Flow = (q(s1, 'Btu/lb') * q(flows[flows.index == 's1'].iloc[-1]['total'], 'lb/h')).to('MMBtu/h')
+s2_H_Flow = (q(s2, 'Btu/lb') * q(flows[flows.index == 's2'].iloc[-1]['total'], 'lb/h')).to('MMBtu/h')
+
+print('=== Enthalpy Flows ===', s1_H_Flow, s2_H_Flow, sep='\n')
