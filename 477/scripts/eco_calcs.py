@@ -18,8 +18,8 @@ class Profit:
         
     def Factories(df: pd.DataFrame = pd.read_csv('tables/factories.csv')):
 
-        df.loc[df["Widgets Demand"] > 2e5, 'Widgets Demand'] == 1e5 # Widgets 2 iron, 1 wood
-        df.loc[df["Gadgets Demand"] > 2e5, 'Gadgets Demand'] == 1e5 # Gadget 1 iron, 3 cloth
+        df.loc[df["Widgets Demand"] > 2e5, 'Widgets Demand'] == 2e5 # Widgets 2 iron, 1 wood
+        df.loc[df["Gadgets Demand"] > 2e5, 'Gadgets Demand'] == 2e5 # Gadget 1 iron, 3 cloth
 
         df["W_profit"] = ((df["Selling Price"] - 20 - 30) * df["Widgets Demand"] / 2) - 1.2e5 
         df["W_profit_iron"] = ((df["Selling Price"] - 20 - 24) * df["Widgets Demand"] / 2 ) - 1.2e5
