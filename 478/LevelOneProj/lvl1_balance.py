@@ -132,10 +132,10 @@ class LevelOneBalance:
     waterMoles = waterMassFlow / self.MolecWeights["H2O"]
 
     self.moleFrac_df.loc[self.moleFrac_df.index == 'DRYBRD', 
-                        'WOOD'] = round(woodMoles / (woodMoles + waterMoles), 3)
+                        'WOOD'] = float(round(woodMoles / (woodMoles + waterMoles), 3))
     
     self.moleFrac_df.loc[self.moleFrac_df.index == 'DRYBRD', 
-                        'H2O'] = round(waterMoles / (woodMoles + waterMoles), 3)
+                        'H2O'] = float(round(waterMoles / (woodMoles + waterMoles), 3))
     
     self.moleFrac_df["sum"] = self.moleFrac_df.sum(axis=1)
 
