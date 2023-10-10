@@ -45,10 +45,10 @@ flows = pd.DataFrame([
     ], index=['s1', 's2']).fillna(0)
 
 flows["total"] = flows.sum(axis=1)
- 
+
 for col in flows.columns.difference(['total']):
     flows[col] = flows[col] / flows['total'] 
- 
+
 print('=== Enthalpy Calculation ===', df, '=== Component Flows ===', flows, sep='\n')
 s1, s2 = 0, 0
 for i, x in flows.iterrows():
