@@ -88,13 +88,12 @@ class LevelOneBalance:
         [1, 0, 0, 0, 0, 0],
         [0, 0, 0, 0, float(self.waterFlow / self.moleFlow_wetbrd), float(self.woodFlow / self.moleFlow_wetbrd)],
         [0, 0, 0, 0, 0, 0],
-        [0, 0, 1 - xH2O - xO2, xO2, xH2O, 0],
+        [0, 0, 0, 0, 0, 0],
       ],
       columns=self.streamComponents,
       index=self.streamIndices
     ).round(4)
 
-    moleFrac_df["sum"] = moleFrac_df.sum(axis=1)
     self.moleFrac_df = moleFrac_df
 
   def MassFractions(self):
@@ -120,15 +119,25 @@ class LevelOneBalance:
       columns=self.streamComponents,
       index=self.streamIndices
     ).round(4)
+    
+    drybrd_MassFlow = self.woodFlow * self.MolecWeights["WOOD"] / (1 - .045)
 
-    '''print(self.waterFlow *, self.woodFlow)
-
-    drybrd_MoleFlow = self.stream_df.at["DRYBRD", 'Mole Flow (lbmol/h)']
     self.stream_df.loc[self.stream_df.index == "DRYBRD", 'Mass Flow (lb/h)'
-                      ] = ((drybrd_MoleFlow - self.woodFlow)  * self.MolecWeights["H2O"] + 
-                           (self.woodFlow * self.MolecWeights["WOOD"]  
-                          )'''
+                      ] = float(drybrd_MassFlow.magnitude)
+    
+    woodMassFlow = self.woodFlow * self.MolecWeights["WOOD"]
+    waterMassFlow = drybrd_MassFlow - woodMassFlow
 
+    woodMoles = woodMassFlow / self.MolecWeights["WOOD"]
+    waterMoles = waterMassFlow / self.MolecWeights["H2O"]
+
+    self.moleFrac_df.loc[self.moleFrac_df.index == 'DRYBRD', 
+                        'WOOD'] = round(woodMoles / (woodMoles + waterMoles), 3)
+    
+    self.moleFrac_df.loc[self.moleFrac_df.index == 'DRYBRD', 
+                        'H2O'] = round(waterMoles / (woodMoles + waterMoles), 3)
+    
+    self.moleFrac_df["sum"] = self.moleFrac_df.sum(axis=1)
 
     massFrac_df["sum"] = massFrac_df.sum(axis=1)
     self.massFrac_df = massFrac_df
