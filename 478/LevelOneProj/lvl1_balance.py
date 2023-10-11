@@ -44,6 +44,7 @@ class LevelOneBalance:
                       "N2": q(28, 'lb / lbmol'),
                       "O2": q(32, 'lb / lbmol'),
                       "H2O": q(18, 'lb / lbmol'),
+                      "STEAM": q(18, 'lb / lbmol'),
                       "WOOD": q(1, 'lb / lbmol'),
                     }
 
@@ -192,6 +193,16 @@ class LevelOneBalance:
     )
     
     self.molesAir = round(molesOut - molesIn, 3)
+    
+    ## ADD EXTRA AIR STREAM
+    self.stream_df = pd.concat([self.stream_df,
+                                pd.DataFrame(
+                                  data=[
+                                    [75, 0, 1, 0, self.molesAir, 0, 0]
+                                  ],
+                                  columns=self.streamCols,
+                                  index=["EXTRA_AIR"]
+                                )], axis=0)
 
     molesBoiler = self.stream_df.at["BOILER_OUTLET", "Mole Flow (lbmol/h)"]
 
@@ -222,27 +233,29 @@ class LevelOneBalance:
 
   def ExhaustMassFractions(self):
     LevelOneBalance.ExhaustMoleFractions(self)
+    for stream in ["EXHAUST", "EXTRA_AIR"]:
+      molFlow = q(self.stream_df.at[stream, "Mole Flow (lbmol/h)"], 'lbmol/h')
+      if stream == "EXTRA_AIR": frac = 'COMBAIR'
+      else: frac = stream
+      molFrac = self.moleFrac_df.loc[self.moleFrac_df.index == frac]
 
-    molFlow = q(self.stream_df.at["EXHAUST", "Mole Flow (lbmol/h)"], 'lbmol/h')
-    molFrac = self.moleFrac_df.loc[self.moleFrac_df.index == "EXHAUST"]
+      co2Mass = molFlow * molFrac.at[frac, "CO2"] * self.MolecWeights["CO2"]
+      n2Mass = molFlow * molFrac.at[frac, "N2"] * self.MolecWeights["N2"]
+      o2Mass = molFlow * molFrac.at[frac, "O2"] * self.MolecWeights["O2"]
+      h2oMass = molFlow * molFrac.at[frac, "H2O"] * self.MolecWeights["H2O"]
 
-    co2Mass = molFlow * molFrac.at["EXHAUST", "CO2"] * self.MolecWeights["CO2"]
-    n2Mass = molFlow * molFrac.at["EXHAUST", "N2"] * self.MolecWeights["N2"]
-    o2Mass = molFlow * molFrac.at["EXHAUST", "O2"] * self.MolecWeights["O2"]
-    h2oMass = molFlow * molFrac.at["EXHAUST", "H2O"] * self.MolecWeights["H2O"]
+      totalMass = co2Mass + n2Mass + o2Mass + h2oMass
 
-    totalMass = co2Mass + n2Mass + o2Mass + h2oMass
+      for x in ["CO2", "N2", "O2", "H2O"]:
+        massDict = {"CO2": co2Mass, "N2": n2Mass,
+                  "O2": o2Mass, "H2O": h2oMass}
 
-    for x in ["CO2", "N2", "O2", "H2O"]:
-      massDict = {"CO2": co2Mass, "N2": n2Mass,
-                "O2": o2Mass, "H2O": h2oMass}
+        self.massFrac_df.loc[self.massFrac_df.index == stream,
+                            x] = (massDict[x] / totalMass).magnitude
 
-      self.massFrac_df.loc[self.massFrac_df.index == 'EXHAUST',
-                          x] = (massDict[x] / totalMass).magnitude
+      self.stream_df.at[stream, "Mass Flow (lb/h)"] = totalMass.magnitude
 
     self.massFrac_df["sum"] = self.massFrac_df.sum(axis=1)
-  
-    self.stream_df.at["EXHAUST", "Mass Flow (lb/h)"] = totalMass.magnitude
 
   @staticmethod
   def EnthalpyCalc(
@@ -275,7 +288,19 @@ class LevelOneBalance:
 
     for i, x in self.stream_df.iterrows():
       if i != 'BOILER_OUTLET':
-        df = self.moleFrac_df[self.moleFrac_df.index == i]
+
+        if i == "EXTRA_AIR": indexCol = 'COMBAIR'
+        else: indexCol = i
+
+        df = self.moleFrac_df[self.moleFrac_df.index == indexCol]
+
+        print('===== Stream =====')
+
+        print(f"stream: {i}", 
+              f"Vapor Fraction: {x['Vapor Fraction']}", 
+              f"Temperature: {x['Temperature (degF)']}",
+              f'Mole Flow: {x["Mass Flow (lb/h)"]}', 
+              sep=', ')
 
         streamEnthalpy = 0
         for col in [x for x in df.columns if x != 'sum']:
@@ -283,31 +308,38 @@ class LevelOneBalance:
           elif col == "WOOD": species = 'H2O'
           else: species = col
 
-          if df.at[i, col] > 0:
+          if df.at[indexCol, col] > 0:
             h = LevelOneBalance.EnthalpyCalc(
                                       species,
-                                      self.MolecWeights[col],
+                                      self.MolecWeights[species],
                                       x["Temperature (degF)"],
                                     )
             
-            if col == 'WOOD': h / 3
-            streamEnthalpy += (h * df.at[i, col]).magnitude
+            if col == 'WOOD': h /= 3
 
-        self.stream_df.loc[self.stream_df.index == i, 'Enthalpy Flows (MMBtu/h)'
+            print(f"Species: {col}",
+                  f"Mole Fraction: {df.at[indexCol, col]}",
+                  f"Component Enthalpy: {h}",
+                  sep=', ')
+
+            streamEnthalpy += (h * df.at[indexCol, col]).magnitude
+
+        self.stream_df.loc[self.stream_df.index == i, 'Enthalpy Flow (MMBtu/h)'
             ] = (q(streamEnthalpy, 'Btu/lb') * 
                   q(x["Mass Flow (lb/h)"], 'lb/h')).to('MMBtu/h').magnitude
 
   def Tables(self):
     LevelOneBalance.EnthalpyFlows(self)
 
-    x, col = self.stream_df, 'Enthalpy Flows (MMBtu/h)'
+    x, col = self.stream_df, 'Enthalpy Flow (MMBtu/h)'
 
     heatLoss = round(
       (x.at["DRYBRD", col] + x.at["EXHAUST", col]) -
-      (x.at["WETBRD", col] + x.at["FUEL", col] + x.at["COMBAIR", col])
+      (x.at["WETBRD", col] + x.at["FUEL", col] + 
+        x.at["COMBAIR", col] + x.at["EXTRA_AIR", col])
     , 3)
 
-    print("=== Stream Table ===", self.stream_df,
+    print("=== Stream Table ===", self.stream_df.drop("BOILER_OUTLET"),
           '=== Mole Fractions Table ===', self.moleFrac_df,
           '=== Mass Fractions Table ===', self.massFrac_df,  
           '===========',
