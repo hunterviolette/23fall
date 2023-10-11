@@ -18,6 +18,15 @@ class LevelOneBalance:
   def __init__(self) -> None:
     self.streamIndices = ['COMBAIR', 'FUEL', 'WETBRD', 'DRYBRD', 'EXHAUST']
     self.streamComponents = ['CH4', 'CO2', 'N2', 'O2', 'H2O', 'WOOD']
+    self.streamCols = [
+                'Temperature (degF)', 
+                'Wet Bulb Temperature (degF)', 
+                'Vapor Fraction', 
+                'Mass Flow (lb/h)',
+                'Mole Flow (lbmol/h)', 
+                'Volume Flow (SCFH)', 
+                'Enthalpy Flow (MMBtu/h)'
+              ]
 
     self.scfh_to_mol = q(22.4 / 28.317, 'ft**3/mol')
 
@@ -48,6 +57,7 @@ class LevelOneBalance:
   def StreamConditions(self):
     
     moleFlow_combAir = (self.combAir_flow / self.scfh_to_mol).to('lbmol/h').magnitude
+    moleFlow_exhuast = (self.exhaust_flow / self.scfh_to_mol).to('lbmol/h')
     moleFlow_fuel = (self.fuel_flow / self.scfh_to_mol).to('lbmol/h')
     massFlow_fuel = float(round((moleFlow_fuel * self.MolecWeights["CH4"]).magnitude, 3))
 
@@ -61,16 +71,9 @@ class LevelOneBalance:
           [75, 0, 1, massFlow_fuel, moleFlow_fuel.magnitude, self.fuel_flow.magnitude, 0],
           [122, 0, 0, self.wetBoard_flow.magnitude, float(self.moleFlow_wetbrd.magnitude), 0, 0],
           [190, 0, 0, 0, float((self.woodFlow + self.waterFlow * .045).magnitude) , 0, 0],
-          [310, 152, 1, 0, 0, self.exhaust_flow.to('SCFH').magnitude, 0],
+          [310, 152, 1, 0, moleFlow_exhuast.magnitude, self.exhaust_flow.to('SCFH').magnitude, 0],
         ],
-        columns=['Temperature (degF)', 
-                'Wet Bulb Temperature (degF)', 
-                'Vapor Fraction', 
-                'Mass Flow (lb/h)',
-                'Mole Flow (lbmol/h)', 
-                'Volume Flow (SCFH)', 
-                'Enthalpy Flow (MMBtu/h)'
-              ],
+        columns=self.streamCols,
         index=self.streamIndices,
     ).round(4)
 
@@ -81,7 +84,6 @@ class LevelOneBalance:
     xH2O = float(q(.0293, 'atm') / q(1, 'atm') * .8)
     xO2 = .21 * (1 - xH2O)
     
-
     moleFrac_df = pd.DataFrame(
       data=[
         [0, 0, 1 - xH2O - xO2, xO2, xH2O, 0],
@@ -137,23 +139,117 @@ class LevelOneBalance:
     self.moleFrac_df.loc[self.moleFrac_df.index == 'DRYBRD', 
                         'H2O'] = float(round(waterMoles / (woodMoles + waterMoles), 3))
     
-    self.moleFrac_df["sum"] = self.moleFrac_df.sum(axis=1)
-
-    massFrac_df["sum"] = massFrac_df.sum(axis=1)
     self.massFrac_df = massFrac_df
 
-  def MoleFlows(self):
-    pass
-
-  def MassFlows(self):
-    pass
-    
-  def Tables(self):
+  def ExhaustMoleFractions(self):
     LevelOneBalance.StreamConditions(self)
     LevelOneBalance.MoleFractions(self)
     LevelOneBalance.MassFractions(self)
 
-    print(f"=== Stream Table ===", self.stream_df,
+    caMoleFlow = self.stream_df.at["COMBAIR", "Mole Flow (lbmol/h)"]
+    fMoleFlow = self.stream_df.at["FUEL", "Mole Flow (lbmol/h)"]
+
+    df = self.moleFrac_df
+
+    o2Moles = df.at["COMBAIR", 'O2'] * caMoleFlow 
+    outletFlow = fMoleFlow + caMoleFlow
+
+    self.moleFrac_df = pd.concat([
+      df,
+      pd.DataFrame({
+        "CH4":[0], 
+        "CO2": [fMoleFlow / outletFlow],
+        "N2": [df.at["COMBAIR", 'N2'] * caMoleFlow / outletFlow],
+        "O2": [(o2Moles - 2*fMoleFlow)  / outletFlow],
+        "H2O": [((df.at["COMBAIR", 'H2O'] * caMoleFlow) + 2 * fMoleFlow) / outletFlow],
+        "WOOD": [0],
+      }, index=["BOILER_OUTLET"])
+    ], axis=0)
+    
+    self.stream_df = pd.concat([
+      self.stream_df,
+      pd.DataFrame(data=[
+                    [0, 0, 1, 0, outletFlow, 0 ,0]
+                  ],
+                  columns=self.streamCols,
+                  index=["BOILER_OUTLET"]
+                  )
+    ])
+
+    waterEvap = (
+      self.stream_df.at["WETBRD", 'Mole Flow (lbmol/h)'] -
+      self.stream_df.at["DRYBRD", 'Mole Flow (lbmol/h)']
+    )
+
+    molesIn = (
+          self.stream_df.at["BOILER_OUTLET", 'Mole Flow (lbmol/h)'] +
+          self.stream_df.at["WETBRD", 'Mole Flow (lbmol/h)']
+        )
+    
+    molesOut = (
+          self.stream_df.at["DRYBRD", 'Mole Flow (lbmol/h)'] +
+          self.stream_df.at["EXHAUST", 'Mole Flow (lbmol/h)']
+    )
+    
+    self.molesAir = round(molesOut - molesIn, 3)
+
+    molesBoiler = self.stream_df.at["BOILER_OUTLET", "Mole Flow (lbmol/h)"]
+
+    molh2o = waterEvap + (
+              self.moleFrac_df.at["BOILER_OUTLET", "H2O"] * molesBoiler
+              ) + self.moleFrac_df.at["COMBAIR", "H2O"] * self.molesAir
+    
+    molco2 = (self.moleFrac_df.at["BOILER_OUTLET", "CO2"] * molesBoiler
+              ) + self.moleFrac_df.at["COMBAIR", "CO2"] * self.molesAir
+    
+    moln2 = (self.moleFrac_df.at["BOILER_OUTLET", "N2"] * molesBoiler
+              ) + self.moleFrac_df.at["COMBAIR", "N2"] * self.molesAir
+    
+    molo2 = (self.moleFrac_df.at["BOILER_OUTLET", "O2"] * molesBoiler
+              ) + self.moleFrac_df.at["COMBAIR", "O2"] * self.molesAir
+    
+    exhuastMoles = molh2o + molco2 + moln2 + molo2
+
+    for x in ["CO2", "N2", "O2", "H2O"]:
+      molDict = {"CO2": molco2, "N2": moln2,
+                "O2": molo2, "H2O": molh2o}
+
+      self.moleFrac_df.loc[self.moleFrac_df.index == 'EXHAUST',
+                          x] = molDict[x] / exhuastMoles
+      
+    
+    self.moleFrac_df["sum"] = self.moleFrac_df.sum(axis=1)
+
+  def ExhaustMassFractions(self):
+    LevelOneBalance.ExhaustMoleFractions(self)
+
+    molFlow = q(self.stream_df.at["EXHAUST", "Mole Flow (lbmol/h)"], 'lbmol/h')
+    molFrac = self.moleFrac_df.loc[self.moleFrac_df.index == "EXHAUST"]
+
+    co2Mass = molFlow * molFrac.at["EXHAUST", "CO2"] * self.MolecWeights["CO2"]
+    n2Mass = molFlow * molFrac.at["EXHAUST", "N2"] * self.MolecWeights["N2"]
+    o2Mass = molFlow * molFrac.at["EXHAUST", "O2"] * self.MolecWeights["O2"]
+    h2oMass = molFlow * molFrac.at["EXHAUST", "H2O"] * self.MolecWeights["H2O"]
+
+    totalMass = co2Mass + n2Mass + o2Mass + h2oMass
+
+    for x in ["CO2", "N2", "O2", "H2O"]:
+      massDict = {"CO2": co2Mass, "N2": n2Mass,
+                "O2": o2Mass, "H2O": h2oMass}
+
+      self.massFrac_df.loc[self.massFrac_df.index == 'EXHAUST',
+                          x] = (massDict[x] / totalMass).magnitude
+
+    self.massFrac_df["sum"] = self.massFrac_df.sum(axis=1)
+  
+    self.stream_df.at["EXHAUST", "Mass Flow (lb/h)"] = totalMass.magnitude
+
+  def Tables(self):
+    LevelOneBalance.ExhaustMassFractions(self)
+
+    print("=== Stream Table ===", self.stream_df,
+          '=== Moles of Air Missing (lbmol/h) ===', self.molesAir,
           '=== Mole Fractions Table ===', self.moleFrac_df,
           '=== Mass Fractions Table ===', self.massFrac_df,  
+          '===========',
         sep='\n')
