@@ -15,12 +15,13 @@ q = uReg.Quantity
 
 class LevelOneBalance:
 
-  def __init__(self) -> None:
+  def __init__(self, verbose: bool = False) -> None:
+    self.verbose = verbose
+
     self.streamIndices = ['COMBAIR', 'FUEL', 'WETBRD', 'DRYBRD', 'EXHAUST']
     self.streamComponents = ['CH4', 'CO2', 'N2', 'O2', 'H2O', 'WOOD']
     self.streamCols = [
                 'Temperature (degF)', 
-                'Wet Bulb Temperature (degF)', 
                 'Vapor Fraction', 
                 'Mass Flow (lb/h)',
                 'Mole Flow (lbmol/h)', 
@@ -39,21 +40,22 @@ class LevelOneBalance:
     self.exhaust_flow = q( 7.74e4, 'SCFM')
 
     self.MolecWeights = {
-                      "CH4": q(16, 'lb / lbmol'),
-                      "CO2": q(44, 'lb / lbmol'),
-                      "N2": q(28, 'lb / lbmol'),
-                      "O2": q(32, 'lb / lbmol'),
-                      "H2O": q(18, 'lb / lbmol'),
-                      "STEAM": q(18, 'lb / lbmol'),
-                      "WOOD": q(1, 'lb / lbmol'),
-                    }
+          "CH4": q(16, 'lb / lbmol'),
+          "CO2": q(44, 'lb / lbmol'),
+          "N2": q(28, 'lb / lbmol'),
+          "O2": q(32, 'lb / lbmol'),
+          "H2O": q(18, 'lb / lbmol'),
+          "STEAM": q(18, 'lb / lbmol'),
+          "WOOD": q(1, 'lb / lbmol'),
+        }
 
-    print('=== Knowns ===',
-          f"Wetboard inlet flow: {self.wetBoard_flow} at {self.xBoard_reagant} consistency",
-          f"Fuel gas flow: {self.fuel_flow}",
-          f"Combustion air flow: {self.combAir_flow}",
-          f"Exhaust air flow: {self.exhaust_flow}",
-        sep='\n')
+    if verbose:
+      print('=== Knowns ===',
+            f"Wetboard inlet flow: {self.wetBoard_flow} at {self.xBoard_reagant} consistency",
+            f"Fuel gas flow: {self.fuel_flow}",
+            f"Combustion air flow: {self.combAir_flow}",
+            f"Exhaust air flow: {self.exhaust_flow}",
+          sep='\n')
 
   def StreamConditions(self):
     
@@ -68,11 +70,11 @@ class LevelOneBalance:
 
     stream_df = pd.DataFrame(
         data=[
-          [round(q(0,'degC').to('degF').magnitude,0), 0, 1, 0, moleFlow_combAir, self.combAir_flow.to('SCFH').magnitude, 0],
-          [75, 0, 1, massFlow_fuel, moleFlow_fuel.magnitude, self.fuel_flow.magnitude, 0],
-          [122, 0, 0, self.wetBoard_flow.magnitude, float(self.moleFlow_wetbrd.magnitude), 0, 0],
-          [190, 0, 0, 0, float((self.woodFlow + self.waterFlow * .045).magnitude) , 0, 0],
-          [310, 152, 1, 0, moleFlow_exhuast.magnitude, self.exhaust_flow.to('SCFH').magnitude, 0],
+          [round(q(75,'degF').magnitude,0), 1, 0, moleFlow_combAir, self.combAir_flow.to('SCFH').magnitude, 0],
+          [75, 1, massFlow_fuel, moleFlow_fuel.magnitude, self.fuel_flow.magnitude, 0],
+          [122, 0, self.wetBoard_flow.magnitude, float(self.moleFlow_wetbrd.magnitude), 0, 0],
+          [190, 0, 0, float((self.woodFlow + self.waterFlow * .045).magnitude) , 0, 0],
+          [310, 1, 0, moleFlow_exhuast.magnitude, self.exhaust_flow.to('SCFH').magnitude, 0],
         ],
         columns=self.streamCols,
         index=self.streamIndices,
@@ -170,7 +172,7 @@ class LevelOneBalance:
     self.stream_df = pd.concat([
       self.stream_df,
       pd.DataFrame(data=[
-                    [0, 0, 1, 0, outletFlow, 0 ,0]
+                    [0, 1, 0, outletFlow, 0 ,0]
                   ],
                   columns=self.streamCols,
                   index=["BOILER_OUTLET"]
@@ -198,7 +200,7 @@ class LevelOneBalance:
     self.stream_df = pd.concat([self.stream_df,
                                 pd.DataFrame(
                                   data=[
-                                    [75, 0, 1, 0, self.molesAir, 0, 0]
+                                    [75, 1, 0, self.molesAir, 0, 0]
                                   ],
                                   columns=self.streamCols,
                                   index=["EXTRA_AIR"]
@@ -274,14 +276,18 @@ class LevelOneBalance:
       {'tmax': 1500, 'cp_r': 4.217, 'a': 1.702, 'b': 9.081, 'c': -2.164, 'd': 0, 'hf':-74.52},
     ], index=["O2", "N2", "CO2", "H2O", "STEAM", "CH4"])
 
-    molar_h = q(x.at[species, "hf"], 'kJ/mol') + q(8.314, 'J/mol/K').to('kJ/mol/K') * \
+    if species == 'WOOD':
+      return (q(.33, 'Btu/lb/degF') * q(t, 'K').to('degF')).to('Btu/lb')
+    
+    else:
+      molar_h = q(x.at[species, "hf"], 'kJ/mol') + q(8.314, 'J/mol/K').to('kJ/mol/K') * \
                                       q(x.at[species, 'a'] * (t - tRef) + \
                                         x.at[species, 'b']*10**-3 / 2 * (t**2 - tRef**2) + \
                                         x.at[species, 'c']*10**-6 / 3 * (t**3 - tRef**3) + \
                                         x.at[species, 'd']*10**5 / -1 * (t**-1 - tRef**-1)
                                       , 'K')
     
-    return (molar_h / molecWeight).to('Btu/lb')
+      return (molar_h / molecWeight).to('Btu/lb')
 
   def EnthalpyFlows(self):
     LevelOneBalance.ExhaustMassFractions(self)
@@ -292,38 +298,36 @@ class LevelOneBalance:
         if i == "EXTRA_AIR": indexCol = 'COMBAIR'
         else: indexCol = i
 
-        df = self.moleFrac_df[self.moleFrac_df.index == indexCol]
+        df = self.massFrac_df[self.massFrac_df.index == indexCol]
 
-        print('===== Stream =====')
+        if self.verbose:
+          print('===== Stream =====')
 
-        print(f"stream: {i}", 
-              f"Vapor Fraction: {x['Vapor Fraction']}", 
-              f"Temperature: {x['Temperature (degF)']}",
-              f'Mole Flow: {x["Mass Flow (lb/h)"]}', 
-              sep=', ')
+          print(f"stream: {i}", 
+                f"Vapor Fraction: {x['Vapor Fraction']}", 
+                f"Temperature: {x['Temperature (degF)']}",
+                f'Mole Flow: {x["Mass Flow (lb/h)"]}', 
+                sep=', ')
 
         streamEnthalpy = 0
         for col in [x for x in df.columns if x != 'sum']:
           if col == "H2O" and x["Vapor Fraction"] == 1: species = "STEAM"
-          elif col == "WOOD": species = 'H2O'
           else: species = col
 
           if df.at[indexCol, col] > 0:
             
-            if col == 'WOOD':
-              h = (q(.33, 'Btu/lb/degF') * q(x["Temperature (degF)"], 'degF')).to('Btu/lb')
-            else:
-              h = LevelOneBalance.EnthalpyCalc(
-                                        species,
-                                        self.MolecWeights[species],
-                                        q(x["Temperature (degF)"], 'degF').to('K').magnitude,
-                                      )
-
-            print(f"Species: {col}",
-                  f"Mole Fraction: {round(df.at[indexCol, col], 3)}",
-                  f"Component Enthalpy: {round(h,3)}",
-                  f"Molar Enthalpy: {round(q(h, 'Btu/lb') * self.MolecWeights[species], 3)}",
-                  sep=', ')
+            h = LevelOneBalance.EnthalpyCalc(
+                                      species,
+                                      self.MolecWeights[species],
+                                      q(x["Temperature (degF)"], 'degF').to('K').magnitude,
+                                    )
+            
+            if self.verbose:
+              print(f"Species: {col}",
+                    f"Mole Fraction: {round(df.at[indexCol, col], 3)}",
+                    f"Component Enthalpy: {round(h,3)}",
+                    f"Molar Enthalpy: {round(q(h, 'Btu/lb') * self.MolecWeights[species], 3)}",
+                    sep=', ')
 
             streamEnthalpy += (h * df.at[indexCol, col]).magnitude
 
@@ -350,3 +354,27 @@ class LevelOneBalance:
           f'Heat Loss (MMBtu/h) {heatLoss}',
 
         sep='\n')
+
+  def EnthalpyDebug(self, 
+                    species: str,
+                    Temp = q(75, 'degF').to('K').magnitude, 
+                    Tref = q(25, 'degC').to('K').magnitude
+                  ):
+    
+    mw = self.MolecWeights[species]
+
+    h = LevelOneBalance.EnthalpyCalc(
+        species, 
+        mw,
+        Temp,
+        Tref
+      )
+      
+    print(
+      f"Species: {species}",
+      f"Temp (K): {round(Temp, 0)}",
+      f"Tref (K): {round(Tref, 0)}",
+      f"Molec Weight: {mw}",
+      f"Enthalpy Flow: {round(h.to('MMBtu/lb'), 6)}",
+      f"Molar Enthalpy: {round(h * mw, 2)}",
+    sep='\n')
