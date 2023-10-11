@@ -300,9 +300,18 @@ class LevelOneBalance:
   def Tables(self):
     LevelOneBalance.EnthalpyFlows(self)
 
+    x, col = self.stream_df, 'Enthalpy Flows (MMBtu/h)'
+
+    heatLoss = round(
+      (x.at["DRYBRD", col] + x.at["EXHAUST", col]) -
+      (x.at["WETBRD", col] + x.at["FUEL", col] + x.at["COMBAIR", col])
+    , 3)
+
     print("=== Stream Table ===", self.stream_df,
-          '=== Moles of Air Missing (lbmol/h) ===', self.molesAir,
           '=== Mole Fractions Table ===', self.moleFrac_df,
           '=== Mass Fractions Table ===', self.massFrac_df,  
           '===========',
+          f'Moles of Air Missing (lbmol/h) {self.molesAir}',
+          f'Heat Loss (MMBtu/h) {heatLoss}',
+
         sep='\n')
