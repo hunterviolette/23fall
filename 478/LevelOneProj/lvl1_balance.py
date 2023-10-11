@@ -68,7 +68,7 @@ class LevelOneBalance:
 
     stream_df = pd.DataFrame(
         data=[
-          [75, 0, 1, 0, moleFlow_combAir, self.combAir_flow.to('SCFH').magnitude, 0],
+          [round(q(0,'degC').to('degF').magnitude,0), 0, 1, 0, moleFlow_combAir, self.combAir_flow.to('SCFH').magnitude, 0],
           [75, 0, 1, massFlow_fuel, moleFlow_fuel.magnitude, self.fuel_flow.magnitude, 0],
           [122, 0, 0, self.wetBoard_flow.magnitude, float(self.moleFlow_wetbrd.magnitude), 0, 0],
           [190, 0, 0, 0, float((self.woodFlow + self.waterFlow * .045).magnitude) , 0, 0],
@@ -262,9 +262,9 @@ class LevelOneBalance:
                   species: str,
                   molecWeight: str,
                   t: float,
-                  tRef: float = q(25, 'degF').to('K').magnitude
+                  tRef: float = q(25, 'degC').to('K').magnitude
                 ):
-
+    
     x = pd.DataFrame([
       {'tmax': 2000, 'cp_r': 3.535, 'a': 3.639, 'b': 0.506, 'c': 0, 'd': -0.227, 'hf':0},
       {'tmax': 2000, 'cp_r': 3.502, 'a': 3.28, 'b': 0.593, 'c': 0, 'd': 0.04, 'hf':0},
@@ -281,7 +281,7 @@ class LevelOneBalance:
                                         x.at[species, 'd']*10**5 / -1 * (t**-1 - tRef**-1)
                                       , 'K')
     
-    return (molar_h / q(molecWeight, 'gram/mol')).to('Btu/lb')
+    return (molar_h / molecWeight).to('Btu/lb')
 
   def EnthalpyFlows(self):
     LevelOneBalance.ExhaustMassFractions(self)
@@ -309,17 +309,20 @@ class LevelOneBalance:
           else: species = col
 
           if df.at[indexCol, col] > 0:
-            h = LevelOneBalance.EnthalpyCalc(
-                                      species,
-                                      self.MolecWeights[species],
-                                      x["Temperature (degF)"],
-                                    )
             
-            if col == 'WOOD': h /= 3
+            if col == 'WOOD':
+              h = (q(.33, 'Btu/lb/degF') * q(x["Temperature (degF)"], 'degF')).to('Btu/lb')
+            else:
+              h = LevelOneBalance.EnthalpyCalc(
+                                        species,
+                                        self.MolecWeights[species],
+                                        q(x["Temperature (degF)"], 'degF').to('K').magnitude,
+                                      )
 
             print(f"Species: {col}",
-                  f"Mole Fraction: {df.at[indexCol, col]}",
-                  f"Component Enthalpy: {h}",
+                  f"Mole Fraction: {round(df.at[indexCol, col], 3)}",
+                  f"Component Enthalpy: {round(h,3)}",
+                  f"Molar Enthalpy: {round(q(h, 'Btu/lb') * self.MolecWeights[species], 3)}",
                   sep=', ')
 
             streamEnthalpy += (h * df.at[indexCol, col]).magnitude
