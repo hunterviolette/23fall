@@ -244,8 +244,61 @@ class LevelOneBalance:
   
     self.stream_df.at["EXHAUST", "Mass Flow (lb/h)"] = totalMass.magnitude
 
-  def Tables(self):
+  @staticmethod
+  def EnthalpyCalc(
+                  species: str,
+                  molecWeight: str,
+                  t: float,
+                  tRef: float = q(25, 'degF').to('K').magnitude
+                ):
+
+    x = pd.DataFrame([
+      {'tmax': 2000, 'cp_r': 3.535, 'a': 3.639, 'b': 0.506, 'c': 0, 'd': -0.227, 'hf':0},
+      {'tmax': 2000, 'cp_r': 3.502, 'a': 3.28, 'b': 0.593, 'c': 0, 'd': 0.04, 'hf':0},
+      {'tmax': 2000, 'cp_r': 4.467, 'a': 5.457, 'b': 1.045, 'c': 0, 'd': -1.157, 'hf':-393.509},
+      {'tmax': 2000, 'cp_r': 9.069, 'a': 8.712, 'b': 1.25, 'c': -.18, 'd': 0, 'hf':-285.830},
+      {'tmax': 2000, 'cp_r': 4.038, 'a': 3.47, 'b': 1.45, 'c': 0, 'd': .121, 'hf':-241.818},
+      {'tmax': 1500, 'cp_r': 4.217, 'a': 1.702, 'b': 9.081, 'c': -2.164, 'd': 0, 'hf':-74.52},
+    ], index=["O2", "N2", "CO2", "H2O", "STEAM", "CH4"])
+
+    molar_h = q(x.at[species, "hf"], 'kJ/mol') + q(8.314, 'J/mol/K').to('kJ/mol/K') * \
+                                      q(x.at[species, 'a'] * (t - tRef) + \
+                                        x.at[species, 'b']*10**-3 / 2 * (t**2 - tRef**2) + \
+                                        x.at[species, 'c']*10**-6 / 3 * (t**3 - tRef**3) + \
+                                        x.at[species, 'd']*10**5 / -1 * (t**-1 - tRef**-1)
+                                      , 'K')
+    
+    return (molar_h / q(molecWeight, 'gram/mol')).to('Btu/lb')
+
+  def EnthalpyFlows(self):
     LevelOneBalance.ExhaustMassFractions(self)
+
+    for i, x in self.stream_df.iterrows():
+      if i != 'BOILER_OUTLET':
+        df = self.moleFrac_df[self.moleFrac_df.index == i]
+
+        streamEnthalpy = 0
+        for col in [x for x in df.columns if x != 'sum']:
+          if col == "H2O" and x["Vapor Fraction"] == 1: species = "STEAM"
+          elif col == "WOOD": species = 'H2O'
+          else: species = col
+
+          if df.at[i, col] > 0:
+            h = LevelOneBalance.EnthalpyCalc(
+                                      species,
+                                      self.MolecWeights[col],
+                                      x["Temperature (degF)"],
+                                    )
+            
+            if col == 'WOOD': h / 3
+            streamEnthalpy += (h * df.at[i, col]).magnitude
+
+        self.stream_df.loc[self.stream_df.index == i, 'Enthalpy Flows (MMBtu/h)'
+            ] = (q(streamEnthalpy, 'Btu/lb') * 
+                  q(x["Mass Flow (lb/h)"], 'lb/h')).to('MMBtu/h').magnitude
+
+  def Tables(self):
+    LevelOneBalance.EnthalpyFlows(self)
 
     print("=== Stream Table ===", self.stream_df,
           '=== Moles of Air Missing (lbmol/h) ===', self.molesAir,
