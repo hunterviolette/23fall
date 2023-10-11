@@ -229,7 +229,10 @@ class LevelOneBalance:
 
       self.moleFrac_df.loc[self.moleFrac_df.index == 'EXHAUST',
                           x] = molDict[x] / exhuastMoles
-      
+    
+    self.stream_df.loc[self.stream_df.index == 'EXTRA_AIR',
+        'Volume Flow (SCFH)'] = (q(self.molesAir, 'lbmol/h') * self.scfh_to_mol
+                                  ).to('SCFH').magnitude
     
     self.moleFrac_df["sum"] = self.moleFrac_df.sum(axis=1)
 
