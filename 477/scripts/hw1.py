@@ -13,13 +13,14 @@ class HW1(CHE477):
     m, p, i = 12, 33835, .039
 
     for x in [[5, 'A'], [3, 'B'], [1, 'C']]:
-
+      annuity = symbols('x')
       mp = HW1.annuity(
                   p, # Principal 
                   i, # Interest rate
                   m, # Compounding periods
                   x[0], # Years
-                  symbols('x'), # annuity 
+                  annuity, # annuity 
+                  annuity
                 ) 
       
       ip = mp*m*x[0] - p # Interest paid
@@ -52,12 +53,14 @@ class HW1(CHE477):
     ford, bank = 33835, 60000
     m, n = 12, 5
 
+    annuity = symbols('x')
     mp = HW1.annuity(
                   ford, # Principal 
                   .039, # Interest rate
                   m, # Compounding periods
                   n, # Years
-                  symbols('x'), # annuity 
+                  annuity, # annuity 
+                  annuity # Solve variable
                 ) 
 
     print(f"Monthly payment {mp}")
