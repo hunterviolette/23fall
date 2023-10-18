@@ -1,8 +1,8 @@
-import pandas as pd
-
 # python -c "from lvl1_balance import LevelOneBalance as l; l().Tables()"
 
+import pandas as pd
 import pint
+
 uReg = pint.UnitRegistry(autoconvert_offset_to_baseunit = True)
 uReg.default_format = "~P"
 
@@ -208,27 +208,18 @@ class LevelOneBalance:
 
     molesBoiler = self.stream_df.at["BOILER_OUTLET", "Mole Flow (lbmol/h)"]
 
-    molh2o = waterEvap + (
-              self.moleFrac_df.at["BOILER_OUTLET", "H2O"] * molesBoiler
-              ) + self.moleFrac_df.at["COMBAIR", "H2O"] * self.molesAir
-    
-    molco2 = (self.moleFrac_df.at["BOILER_OUTLET", "CO2"] * molesBoiler
-              ) + self.moleFrac_df.at["COMBAIR", "CO2"] * self.molesAir
-    
-    moln2 = (self.moleFrac_df.at["BOILER_OUTLET", "N2"] * molesBoiler
-              ) + self.moleFrac_df.at["COMBAIR", "N2"] * self.molesAir
-    
-    molo2 = (self.moleFrac_df.at["BOILER_OUTLET", "O2"] * molesBoiler
-              ) + self.moleFrac_df.at["COMBAIR", "O2"] * self.molesAir
-    
-    exhuastMoles = molh2o + molco2 + moln2 + molo2
+    compMole = {}
+    for comp in ["CO2", "N2", "O2", "H2O"]:
+      compMole[comp] = (self.moleFrac_df.at["BOILER_OUTLET", comp] * molesBoiler
+                      ) + self.moleFrac_df.at["COMBAIR", comp] * self.molesAir
+
+      if comp == "H2O": compMole[comp] += waterEvap
+
+    exhuastMoles = sum(compMole.values())
 
     for x in ["CO2", "N2", "O2", "H2O"]:
-      molDict = {"CO2": molco2, "N2": moln2,
-                "O2": molo2, "H2O": molh2o}
-
       self.moleFrac_df.loc[self.moleFrac_df.index == 'EXHAUST',
-                          x] = molDict[x] / exhuastMoles
+                          x] = compMole[x] / exhuastMoles
     
     self.stream_df.loc[self.stream_df.index == 'EXTRA_AIR',
         'Volume Flow (SCFH)'] = (q(self.molesAir, 'lbmol/h') * self.scfh_to_mol
@@ -244,19 +235,15 @@ class LevelOneBalance:
       else: frac = stream
       molFrac = self.moleFrac_df.loc[self.moleFrac_df.index == frac]
 
-      co2Mass = molFlow * molFrac.at[frac, "CO2"] * self.MolecWeights["CO2"]
-      n2Mass = molFlow * molFrac.at[frac, "N2"] * self.MolecWeights["N2"]
-      o2Mass = molFlow * molFrac.at[frac, "O2"] * self.MolecWeights["O2"]
-      h2oMass = molFlow * molFrac.at[frac, "H2O"] * self.MolecWeights["H2O"]
+      compMass = {} 
+      for comp in ["CO2", "N2", "O2", "H2O"]:
+        compMass[comp] = molFlow * molFrac.at[frac, comp] * self.MolecWeights[comp]
 
-      totalMass = co2Mass + n2Mass + o2Mass + h2oMass
+      totalMass = sum(compMass.values())
 
       for x in ["CO2", "N2", "O2", "H2O"]:
-        massDict = {"CO2": co2Mass, "N2": n2Mass,
-                  "O2": o2Mass, "H2O": h2oMass}
-
         self.massFrac_df.loc[self.massFrac_df.index == stream,
-                            x] = (massDict[x] / totalMass).magnitude
+                            x] = (compMass[x] / totalMass).magnitude
 
       self.stream_df.at[stream, "Mass Flow (lb/h)"] = totalMass.magnitude
 
