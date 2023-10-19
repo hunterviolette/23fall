@@ -170,15 +170,14 @@ class LevelOneBalance:
       }, index=["BOILER_OUTLET"])
     ], axis=0)
     
-    self.stream_df = pd.concat([
-      self.stream_df,
-      pd.DataFrame(data=[
-                    [0, 1, 0, outletFlow, 0 ,0]
-                  ],
-                  columns=self.streamCols,
-                  index=["BOILER_OUTLET"]
-                  )
-    ])
+    self.stream_df = pd.concat([self.stream_df,
+                                pd.DataFrame(data=[
+                                              [0, 1, 0, outletFlow, 0 ,0]
+                                            ],
+                                            columns=self.streamCols,
+                                            index=["BOILER_OUTLET"]
+                                            )
+                              ])
 
     waterEvap = (
       self.stream_df.at["WETBRD", 'Mole Flow (lbmol/h)'] -
