@@ -106,16 +106,17 @@ class LevelOneBalance:
     caMoleFlow = self.stream_df.at["COMBAIR", 'Mole Flow (lbmol/h)']
     caMoleComps = self.moleFrac_df.loc[self.moleFrac_df.index == 'COMBAIR']
     
-    n2Mass = q(caMoleFlow,'lbmol/h') * caMoleComps.at["COMBAIR","N2"] * self.MolecWeights["N2"]
-    o2Mass = q(caMoleFlow,'lbmol/h') * caMoleComps.at["COMBAIR","O2"] * self.MolecWeights["O2"]
-    h2oMass = q(caMoleFlow,'lbmol/h') * caMoleComps.at["COMBAIR","H2O"] * self.MolecWeights["H2O"]
-    caMass = n2Mass + o2Mass + h2oMass
+    compMass = {}
+    for comp in ["N2", "O2", "H2O"]:
+      compMass[comp] = q(caMoleFlow,'lbmol/h') * caMoleComps.at["COMBAIR", comp] * self.MolecWeights[comp]
+
+    caMass = compMass["N2"] + compMass["O2"] + compMass["H2O"]
 
     self.stream_df.loc[self.stream_df.index == "COMBAIR", 'Mass Flow (lb/h)'] = float(round(caMass.magnitude, 3))
 
     massFrac_df = pd.DataFrame(
       data=[
-        [0, 0, float(n2Mass / caMass), float(o2Mass / caMass), float(h2oMass/caMass), 0],
+        [0, 0, float(compMass["N2"] / caMass), float(compMass["O2"] / caMass), float(compMass["H2O"]/caMass), 0],
         [1, 0, 0, 0, 0, 0],
         [0, 0, 0, 0, .51, .49],
         [0, 0, 0, 0, .045, 1 - .045],
