@@ -60,4 +60,8 @@ for i, x in flows.iterrows():
 s1_H_Flow = (q(s1, 'Btu/lb') * q(flows[flows.index == 's1'].iloc[-1]['total'], 'lb/h')).to('MMBtu/h')
 s2_H_Flow = (q(s2, 'Btu/lb') * q(flows[flows.index == 's2'].iloc[-1]['total'], 'lb/h')).to('MMBtu/h')
 
-print('=== Enthalpy Flows ===', s1_H_Flow, s2_H_Flow, sep='\n')
+print('=== Enthalpy Flows ===', 
+    f"Stream One: {s1_H_Flow}", 
+    f"Stream Two: {s2_H_Flow}", 
+    sep='\n'
+)
