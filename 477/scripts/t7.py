@@ -37,7 +37,7 @@ class PlantCalc:
         
         gross_profit = ((revenue - feedCost) * self.streamFactor).__round__(2)
         
-        print('==== Stream Calculations ===='
+        print('==== Stream Calculations ====',
             f"Feed Cost: {feedCost}",
             f"Revenue: {revenue}",
             f"Gross Profit: {gross_profit}",
@@ -121,10 +121,25 @@ class PlantCalc:
             f"Total cost of Heat Exchangers: {self.heatExCost}", 
             sep='\n')
     
+    def FiredHeater(self):
+        coef = {"k1": 7.3488, "k2":-1.1666, 'k3':.2028,
+                "c1":.1347, "c2":-.2368, "c3":.1021}
+
+        fBm = 2.13 # Bare module factor
+        a_ = 3 # Attribute for fired heaters, design P, barg
+
+        self.fHeaterCost = (PlantCalc.Cp(coef, a_) * fBm *
+                            PlantCalc.Fp(coef, a_)).__round__(2)
+        
+        print('==== Fired Heater Calculations ====',
+            f"Fired Heater cost: {self.fHeaterCost}",
+            sep='\n')
+
     def All(self):
         PlantCalc.Streams(self)
         PlantCalc.Pumps(self)
         PlantCalc.HeatExchangers(self)
+        PlantCalc.FiredHeater(self)
 
 
     @staticmethod
