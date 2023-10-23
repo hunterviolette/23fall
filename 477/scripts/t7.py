@@ -1,19 +1,21 @@
+import pandas as pd
 import pint
+
+from math import log10
+
 uReg = pint.UnitRegistry(autoconvert_offset_to_baseunit = True)
-uReg.default_format = "~P"
 
 uReg.define('dollar = [currency] = dollar')
 uReg.define('thousand_dollar = 10**3 * dollar')
 uReg.define('million_dollar = 10**6 * dollar')
 
-
 q = uReg.Quantity
-
 
 class PlantCalc:
     
     def __init__(self) -> None:
-        
+        self.appendixCols = ['k1', 'k2', 'k3', 'c1', 'c2', 'c3', 'b1', 'b2']
+
         self.streamFactor = .92
         self.molecWeights = {
             "Isopropyl Alcohol": q(60.1, 'g/mol'),
@@ -35,9 +37,119 @@ class PlantCalc:
         
         gross_profit = ((revenue - feedCost) * self.streamFactor).__round__(2)
         
-        print(f"Feed Cost: {feedCost}",
-              f"Revenue: {revenue}",
-              f"Gross Profit: {gross_profit}",
-              sep='\n')
+        print(
+            f"Feed Cost: {feedCost}",
+            f"Revenue: {revenue}",
+            f"Gross Profit: {gross_profit}",
+            sep='\n')
+
+    def Pumps(self, fBM = 1.57):
+        coef = {"k1": 3.3892, "k2":.0536, 'k3':.1538,
+                "c1":-.3935, "c2":.3957, "c3":-.00226,
+                "b1":.189, "b2":1.35}
         
-PlantCalc().Streams()
+        # MOC, designP, Utility, Shaft Power, Efficiency, Fm
+        pumps = [
+            ["CS", 10, 'Electric', .43, .4, 1.55],
+            ["CS", 2.2, 'Electric', 1.58, .5, 1.55],
+            ["SS", 2.2, 'Electric', 1.3, .75, 2.28],
+        ]
+
+        bareModuleCost = []
+        for pump in pumps:
+            a_ = pump[-3]
+
+            cp = 10**(coef["k1"] + 
+                      coef['k2'] * log10(a_) + 
+                      coef['k3'] * log10(a_)**2
+                    )
+            
+            fp = 10**(coef['c1'] +
+                      coef['c2'] * log10(a_) +
+                      coef["c3"] * log10(a_)**2
+                    )
+            
+            cbm = cp * (coef['b1'] + 
+                        coef['b2'] * fp * pump[-1])
+            
+            bareModuleCost.append(cbm)
+
+        self.pumpCost = sum(bareModuleCost).__round__(2)
+
+        print('==== Pump Calculations ====',
+            [round(x,2) for x in bareModuleCost],
+            f"Total cost of pumps: {2 * self.pumpCost}", 
+            sep='\n')
+        
+    def HeatExchangers(self):
+        coef = pd.DataFrame([
+            [4.8306, -.8509, .3187, .03881, -.11272, .08183, 1.63, 1.66],
+            [4.8306, -.8509, .3187, -.00164, -.00627, .0123, 1.63, 1.66],
+            [4.4646, -.5277, .3955, .03881, -.11272, .08183, 1.63, 1.66],
+        ],
+        columns=self.appendixCols,
+        index=['FloatingHead', 'FloatingHeadHighP', 'KettleReboiler']
+        )
+        
+        # Area, MOC, DesignP, Spec
+        heatExs = [
+            [83.2, 'CS', 10, 'FloatingHeadHighP'],
+            [77.3, 'CS', 2.2, 'FloatingHead'],
+            [9.2, 'CS', 2.2, 'FloatingHead'],
+            [28.5, 'SS', 2.2, 'KettleReboiler'],
+            [75.0, 'CS', 2.2, 'FloatingHead'],
+        ]
+
+        fM = {'CS':1, 'SS':1.81}
+
+        bareModuleCost = []
+        for hX in heatExs:
+            ser = coef.loc[coef.index == hX[-1]].squeeze()
+            if hX[2] < 5: 
+                ser["c1"], ser["c2"], ser["c3"] = 0, 0, 0
+
+            if hX[0] < 10: hX[0] = 10
+            
+            bareModuleCost.append(
+                PlantCalc.Cbm(
+                    PlantCalc.Cp(ser, hX[0]), # Cp
+                    ser, # coefficients
+                    PlantCalc.Fp(ser, hX[0]),
+                    fM[hX[1]]
+                )
+            )
+
+        self.heatExCost = sum(bareModuleCost).__round__(2)
+
+        print('==== HeatEx Calculations ====',
+            [round(x,2) for x in bareModuleCost],
+            f"Total cost of Heat Exchangers: {self.heatExCost}", 
+            sep='\n')
+    
+    def All(self):
+        PlantCalc.Streams(self)
+        PlantCalc.Pumps(self)
+        PlantCalc.HeatExchangers(self)
+
+
+    @staticmethod
+    def Cp(coef: pd.Series, a_: float):
+        return 10**(coef["k1"] + 
+                    coef['k2'] * log10(a_) + 
+                    coef['k3'] * log10(a_)**2
+                )
+    
+    @staticmethod
+    def Fp(coef: pd.Series, a_: float):
+        return 10**(coef['c1'] +
+                    coef['c2'] * log10(a_) +
+                    coef["c3"] * log10(a_)**2
+                )
+    
+    @staticmethod
+    def Cbm(cp: float, coef: pd.Series, fp: float, fm: float):
+        return cp * (coef['b1'] + 
+                     coef['b2'] * fp * fm
+                )
+
+PlantCalc().All()
