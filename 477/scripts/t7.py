@@ -37,42 +37,37 @@ class PlantCalc:
         
         gross_profit = ((revenue - feedCost) * self.streamFactor).__round__(2)
         
-        print(
+        print('==== Stream Calculations ===='
             f"Feed Cost: {feedCost}",
             f"Revenue: {revenue}",
             f"Gross Profit: {gross_profit}",
             sep='\n')
 
-    def Pumps(self, fBM = 1.57):
+    def Pumps(self):
         coef = {"k1": 3.3892, "k2":.0536, 'k3':.1538,
                 "c1":-.3935, "c2":.3957, "c3":-.00226,
                 "b1":.189, "b2":1.35}
         
         # MOC, designP, Utility, Shaft Power, Efficiency, Fm
         pumps = [
-            ["CS", 10, 'Electric', .43, .4, 1.55],
-            ["CS", 2.2, 'Electric', 1.58, .5, 1.55],
-            ["SS", 2.2, 'Electric', 1.3, .75, 2.28],
+            ["CS", 10, 'Electric', .43, .4],
+            ["CS", 2.2, 'Electric', 1.58, .5],
+            ["SS", 2.2, 'Electric', 1.3, .75],
         ]
+
+        fM = {'CS':1.55, 'SS':2.28}
 
         bareModuleCost = []
         for pump in pumps:
-            a_ = pump[-3]
-
-            cp = 10**(coef["k1"] + 
-                      coef['k2'] * log10(a_) + 
-                      coef['k3'] * log10(a_)**2
-                    )
             
-            fp = 10**(coef['c1'] +
-                      coef['c2'] * log10(a_) +
-                      coef["c3"] * log10(a_)**2
-                    )
-            
-            cbm = cp * (coef['b1'] + 
-                        coef['b2'] * fp * pump[-1])
-            
-            bareModuleCost.append(cbm)
+            bareModuleCost.append(
+                PlantCalc.Cbm(
+                    PlantCalc.Cp(coef, pump[3]), # Cp
+                    coef, # coefficients
+                    PlantCalc.Fp(coef, pump[3]),
+                    fM[pump[0]]
+                )
+            )
 
         self.pumpCost = sum(bareModuleCost).__round__(2)
 
