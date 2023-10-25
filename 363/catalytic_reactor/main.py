@@ -1,25 +1,35 @@
 import sympy as sp
+import pandas as pd
 
-# Define the symbols and the function
 v_, rho, t = sp.symbols('v_ rho t')
 f = v_ * rho / t
 
-# Calculate partial derivatives
-df_dv = sp.diff(f, v_)
-df_drho = sp.diff(f, rho)
-df_dt = sp.diff(f, t)
-
-# Define specific values for the symbols
 v_value = 5.0
 rho_value = 2.0
 t_value = 1.0
 
-# Substitute the values into the partial derivative functions
-df_dv_value = df_dv.subs({v_: v_value, rho: rho_value, t: t_value})
-df_drho_value = df_drho.subs({v_: v_value, rho: rho_value, t: t_value})
-df_dt_value = df_dt.subs({v_: v_value, rho: rho_value, t: t_value})
+unc_v = v_value * .01
+unc_rho = rho_value * .01
+unc_t = t_value * .01
 
-# Display the results
-print("Partial derivative with respect to v_ at v=5, rho=2, t=1:", df_dv_value)
-print("Partial derivative with respect to rho at v=5, rho=2, t=1:", df_drho_value)
-print("Partial derivative with respect to t at v=5, rho=2, t=1:", df_dt_value)
+sub = {v_: v_value, rho: rho_value, t: t_value}
+
+df = pd.DataFrame()
+for comp in [[v_, unc_v], [rho, unc_rho], [t, unc_t]]:
+    assert len(comp) == 2
+    
+    df = pd.concat([
+        df,
+        pd.DataFrame({
+            'Component': [comp[0]],
+            'Uncert Value': [comp[1]],
+            'Component Uncert': [(sp.diff(f, comp[0]).subs(sub)**2 * comp[1]**2)**.5],
+        })
+    ])
+
+df = df.astype({"Component Uncert": 'float'})
+
+df["Total Uncert"] = df["Component Uncert"].sum()
+df['Relative Uncert'] = df["Component Uncert"] / df["Total Uncert"]
+
+print(df.round(2))
