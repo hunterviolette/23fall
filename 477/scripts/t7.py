@@ -28,12 +28,14 @@ class PlantCalc:
         ipaCost = q(1.44, 'dollar/kg') * q(2670, 'kg/hr')
         waterCost = q(360, 'kg/hr') * q(14.5 / 1000, 'dollar/kg')
         
-        feedCost = (ipaCost + waterCost).to('million_dollar/year').__round__(2)
+        feedCost = ((ipaCost + waterCost) * self.streamFactor
+                        ).to('million_dollar/year').__round__(2)
         
         acetoneRev = q(1860, 'kg/hr') * q(2.9, 'dollar/kg')
         gasRev = q(240, 'kg/hr') * q(.5, 'dollar/kg')
         
-        revenue = (acetoneRev + gasRev).to('million_dollar/year').__round__(2)
+        revenue = ((acetoneRev + gasRev) * self.streamFactor
+                   ).to('million_dollar/year').__round__(2)
         
         gross_profit = ((revenue - feedCost) * self.streamFactor).__round__(2)
         
@@ -43,10 +45,10 @@ class PlantCalc:
             f"Gross Profit: {gross_profit}",
             sep='\n')
 
-    def Pumps(self):
+    def Pumps(self, gr: bool = False):
         coef = {"k1": 3.3892, "k2":.0536, 'k3':.1538,
                 "c1":-.3935, "c2":.3957, "c3":-.00226,
-                "b1":.189, "b2":1.35}
+                "b1":1.89, "b2":1.35}
         
         # MOC, designP, Utility, Shaft Power, Efficiency, Fm
         pumps = [
@@ -60,12 +62,15 @@ class PlantCalc:
         bareModuleCost = []
         for pump in pumps:
             
+            if gr: designP, moc = 1, 1
+            else: designP, moc = pump[1], fM[pump[0]]
+            
             bareModuleCost.append(
                 PlantCalc.Cbm(
-                    PlantCalc.Cp(coef, pump[3]), # Cp
+                    PlantCalc.Cp(coef, pump[-2]), # Cp
                     coef, # coefficients
-                    PlantCalc.Fp(coef, pump[3]),
-                    fM[pump[0]]
+                    PlantCalc.Fp(coef, designP),
+                    moc
                 )
             )
 
@@ -76,7 +81,7 @@ class PlantCalc:
             f"Total cost of pumps: {2 * self.pumpCost}", 
             sep='\n')
         
-    def HeatExchangers(self):
+    def HeatExchangers(self, gr: bool = False):
         coef = pd.DataFrame([
             [4.8306, -.8509, .3187, .03881, -.11272, .08183, 1.63, 1.66],
             [4.8306, -.8509, .3187, -.00164, -.00627, .0123, 1.63, 1.66],
@@ -95,12 +100,16 @@ class PlantCalc:
             [75.0, 'CS', 2.2, 'FloatingHead'],
         ]
 
-        fM = {'CS':1, 'SS':1.81}
+        fM = {'CS':1, 'SS':2.73}
 
         bareModuleCost = []
         for hX in heatExs:
             ser = coef.loc[coef.index == hX[-1]].squeeze()
-            if hX[2] < 5: 
+            
+            if gr: designP, moc = 1, 1
+            else: designP, moc = hX[-2], fM[hX[1]]
+            
+            if designP < 5: 
                 ser["c1"], ser["c2"], ser["c3"] = 0, 0, 0
 
             if hX[0] < 10: hX[0] = 10
@@ -109,8 +118,8 @@ class PlantCalc:
                 PlantCalc.Cbm(
                     PlantCalc.Cp(ser, hX[0]), # Cp
                     ser, # coefficients
-                    PlantCalc.Fp(ser, hX[0]),
-                    fM[hX[1]]
+                    PlantCalc.Fp(ser, designP),
+                    moc
                 )
             )
 
@@ -126,10 +135,10 @@ class PlantCalc:
                 "c1":.1347, "c2":-.2368, "c3":.1021}
 
         fBm = 2.13 # Bare module factor
-        a_ = 3 # Attribute for fired heaters, design P, barg
+        a_ = q(3800, 'MJ/h').to('kW').magnitude
 
         self.fHeaterCost = (PlantCalc.Cp(coef, a_) * fBm *
-                            PlantCalc.Fp(coef, a_)).__round__(2)
+                            PlantCalc.Fp(coef, 3)).__round__(2)
         
         print('==== Fired Heater Calculations ====',
             f"Fired Heater cost: {self.fHeaterCost}",
@@ -137,9 +146,15 @@ class PlantCalc:
 
     def All(self):
         PlantCalc.Streams(self)
-        PlantCalc.Pumps(self)
-        PlantCalc.HeatExchangers(self)
-        PlantCalc.FiredHeater(self)
+        
+        for x in [True, False]:
+            if x: print('--- FCI: grassroots ---')
+            else: print('--- FCI: expansion ---')
+            
+            
+            PlantCalc.Pumps(self, x)
+            PlantCalc.HeatExchangers(self, x)
+            PlantCalc.FiredHeater(self)
 
 
     @staticmethod
