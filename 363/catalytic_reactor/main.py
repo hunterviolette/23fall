@@ -15,7 +15,7 @@ class UncertCalc:
 
   @staticmethod
   def Uncert(f, # Function 
-            comps: list, # List of [var, var_uncert]
+            comps: list, # List of lists of [var, var_uncert]
             sub: dict # Subsitution of variables with values
           ):
 
