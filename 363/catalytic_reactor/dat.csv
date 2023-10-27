@@ -1,0 +1,2 @@
+﻿trial,height_col (mm),diam_col (mm),radius_c_particle (mm),radius_f_particle (mm),flow_rate (mL/min),volume_flow (mL),time_flow (sec),x_convers,tau_c (min),k_c (1/s),k_f (1/s),phi_c,eta_c,kT_c (1/s)
+1_coarse,234,25,0.88,0.31,11.04,5,28.25,0.2,10.4,0.000358,0.000467,-2.565,0.728,0.0004914

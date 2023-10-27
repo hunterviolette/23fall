@@ -7,8 +7,11 @@ uReg.default_format = "~P"
 q = uReg.Quantity
 
 class UncertCalc:
-  def __init__(self) -> None:
-    pass
+  def __init__(self, trial: str = '1_coarse') -> None:
+    df = pd.read_csv('dat.csv', index_col='trial')
+    self.s = df.loc[df.index == trial].squeeze()
+    print(f'=== {trial} ===',
+          self.s, sep='\n')
 
   @staticmethod
   def Print(metric, f, comps, sub):
@@ -22,7 +25,8 @@ class UncertCalc:
   def ListMean(x: list):
     return (sum(x) / len(x)).__round__(2)
 
-  def MeanFlowRate(self):
+  @staticmethod
+  def MeanFlowRate():
     coarse = [[5, 28.25], [5, 27.61], [5.2, 26.8]]
     fine = [[5, 27.38], [5.1, 28.91], [5, 27.4]]
     
@@ -37,12 +41,12 @@ class UncertCalc:
     self.coarseFlow = UncertCalc.ListMean(coarseFlows)
     self.fineFlow = UncertCalc.ListMean(fineFlows)
 
-  @staticmethod
-  def Flow():
+  def Flow(self):
     v, t = sp.symbols('v t')
     f = v / t
 
-    v_, t_ = 5, 28.25
+    v_ = self.s["volume_flow (mL)"]
+    t_ = self.s["time_flow (sec)"]
     vu, tu = v_ * .01, t_ * .01
 
     sub = {v: v_, t: t_}
@@ -51,14 +55,12 @@ class UncertCalc:
     UncertCalc.Print('Flow Rate', f, comps ,sub)
 
   def ResidenceTime(self):
-    UncertCalc.MeanFlowRate(self)
-
     h, d, Q = sp.symbols('h d Q')
     f = sp.pi * h * (d / 2)**2 / Q
 
-    Q_ = self.coarseFlow.magnitude
-    h_ = q(23.4, 'cm').to('mm').magnitude
-    d_ = 25
+    Q_ = self.s["flow_rate (mL/min)"]
+    h_ = self.s["height_col (mm)"]
+    d_ = self.s["diam_col (mm)"]
 
     Qu, hu, du = Q_*.01, h_*.01, d_*.01
     
@@ -67,12 +69,13 @@ class UncertCalc:
 
     UncertCalc.Print('Residence Time', f, comps, sub)
 
-  @staticmethod
-  def RateConstants():
+  def RateConstants(self):
     xC, tau = sp.symbols('xC tau')
     f = -sp.ln(1 - xC) / tau
 
-    xC_, tau_ = .2, 10.402
+    xC_ = self.s["x_convers"]
+    tau_ = self.s["tau_c (min)"]
+
     xCu, tauu  = xC_ *.01, tau_ *.01
 
     sub = {xC: xC_, tau: tau_}
@@ -80,16 +83,17 @@ class UncertCalc:
 
     UncertCalc.Print('Rate Constant', f, comps, sub)
 
-  @staticmethod
-  def ThieleModulus():
+  def ThieleModulus(self):
     phiC, rC, rF, kC, kF = sp.symbols('phiC rC rF kC kF')
     f = (1 / sp.tanh(phiC) - 1 / phiC) / \
         (1 / sp.tanh(phiC * rF / rC) - (1 / (phiC * rF / rC))) - \
         ((kC * rC) / (kF * rF))
   
-    phiC_ = -2.565
-    rC_, rF_ = .88 / 2, .31 /2
-    kC_, kF_ = 3.575e-4, 4.666e-4
+    phiC_ = self.s["phi_c"]
+    rC_ = self.s["radius_c_particle (mm)"] / 2
+    rF_ = self.s["radius_f_particle (mm)"] / 2
+    kC_ = self.s["k_c (1/s)"]
+    kF_ = self.s["k_f (1/s)"]
 
     phiCu = phiC_ *.01
     rCu, rFu = rC_ *.01, rF_ *.01
@@ -104,7 +108,8 @@ class UncertCalc:
     phiC = sp.symbols('phiC')
     f = 3 / phiC * (1 / sp.tanh(phiC) - 1/phiC)
 
-    phiC_ = -2.565
+    phiC_ = self.s["phi_c"]
+
     phiCu = phiC_ * .01
 
     sub = {phiC: phiC_}
@@ -116,7 +121,9 @@ class UncertCalc:
     kC, etaC = sp.symbols('kC etaC')
     f = kC / etaC
 
-    kC_, etaC_ = 3.575e-4, .6
+    kC_ = self.s["k_c (1/s)"]
+    etaC_ = self.s["eta_c"]
+
     kCu, etaCu = kC_ *.01, etaC_ *.01
 
     sub = {kC: kC_, etaC: etaC_}
@@ -128,7 +135,10 @@ class UncertCalc:
     kTC, phiC, rC = sp.symbols('kTC phiC rC')
     f = kTC / (phiC / rC)**2
 
-    kTC_, phiC_, rC_ = 1, -2.565, .88 / 2
+    kTC_ = self.s["kT_c (1/s)"]
+    phiC_ = self.s["phi_c"]
+    rC_ = self.s["radius_c_particle (mm)"] / 2
+
     kTCu, phiCu, rCu = kTC_ *.01, phiC_ *.01, rC_ *.01
 
     sub = {kTC: kTC_, phiC: phiC_, rC: rC_}
@@ -161,16 +171,15 @@ class UncertCalc:
     df["Total Uncert"] = df["Relative Uncert"].sum()
     df['Uncert Contribution'] = df["Relative Uncert"] / df["Total Uncert"]
 
-    return df.set_index('Component').round(4)
+    return df.set_index('Component').round(5)
   
   def All(self):
-    UncertCalc.Flow()
+    UncertCalc.Flow(self)
     UncertCalc.ResidenceTime(self)
-    UncertCalc.RateConstants()
-    UncertCalc.ThieleModulus()
+    UncertCalc.RateConstants(self)
+    UncertCalc.ThieleModulus(self)
     UncertCalc.EffectivenessFactor(self)
     UncertCalc.TrueRateConstants(self)
     UncertCalc.Diffusivity(self)
-
 
 UncertCalc().All()
