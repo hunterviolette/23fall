@@ -1,15 +1,12 @@
 import sympy as sp
 import pandas as pd
-import pint
-
-uReg = pint.UnitRegistry(autoconvert_offset_to_baseunit = True)
-uReg.default_format = "~P"
-q = uReg.Quantity
 
 class UncertCalc:
   def __init__(self, trial: str = '1_coarse') -> None:
+
     df = pd.read_csv('dat.csv', index_col='trial')
     self.s = df.loc[df.index == trial].squeeze()
+    
     print(f'=== {trial} ===',
           self.s, sep='\n')
 
@@ -65,15 +62,15 @@ class UncertCalc:
     UncertCalc.Print('Flow Rate', f, comps ,sub)
 
   def ResidenceTime(self):
-    h, d, Q = sp.symbols('h d Q')
-    f = sp.pi * h * (d / 2)**2 / Q
+    h, d, q = sp.symbols('h d q')
+    f = sp.pi * h * (d / 2)**2 / q
 
-    Q_ = self.s["flow_rate (mL/min)"]
+    q_ = self.s["flow_rate (mL/min)"]
     h_ = self.s["height_col (mm)"]
     d_ = self.s["diam_col (mm)"]
     
-    sub = {h: h_, d: d_, Q: Q_}
-    comps = [[h, h_*.01], [d, d_*.01], [Q, Q_*.01]]
+    sub = {h: h_, d: d_, q: q_}
+    comps = [[h, h_*.01], [d, d_*.01], [q, q_*.01]]
 
     UncertCalc.Print('Residence Time', f, comps, sub)
 
