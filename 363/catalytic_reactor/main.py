@@ -21,26 +21,6 @@ class UncertCalc:
           UncertCalc.Uncert(f, comps, sub),
           sep='\n')
     
-  @staticmethod
-  def ListMean(x: list):
-    return (sum(x) / len(x)).__round__(2)
-
-  @staticmethod
-  def MeanFlowRate():
-    coarse = [[5, 28.25], [5, 27.61], [5.2, 26.8]]
-    fine = [[5, 27.38], [5.1, 28.91], [5, 27.4]]
-    
-    coarseFlows = []
-    for c in coarse:
-      coarseFlows.append(q(c[0] / c[1], 'mL/s').to('mL/min'))
-
-    fineFlows = []
-    for f in fine:
-      fineFlows.append(q(c[0] / c[1], 'mL/s').to('mL/min'))
-
-    self.coarseFlow = UncertCalc.ListMean(coarseFlows)
-    self.fineFlow = UncertCalc.ListMean(fineFlows)
-
   def Flow(self):
     v, t = sp.symbols('v t')
     f = v / t
@@ -169,9 +149,13 @@ class UncertCalc:
     df = df.astype({"Relative Uncert": 'float'})
 
     df["Total Uncert"] = df["Relative Uncert"].sum()
-    df['Uncert Contribution'] = df["Relative Uncert"] / df["Total Uncert"]
+    df['Uncert Contribution (%)'] = (df["Relative Uncert"] / df["Total Uncert"])*100 -1 
 
-    return df.set_index('Component').round(5)
+    df = df.round({
+        "Uncert Contribution (%)": 2,
+      })
+
+    return df.set_index('Component')#.round(6)
   
   def All(self):
     UncertCalc.Flow(self)
