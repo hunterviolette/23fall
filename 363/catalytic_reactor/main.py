@@ -58,10 +58,9 @@ class UncertCalc:
 
     v_ = self.s["volume_flow (mL)"]
     t_ = self.s["time_flow (sec)"]
-    vu, tu = v_ * .01, t_ * .01
 
     sub = {v: v_, t: t_}
-    comps = [[v, vu], [t, tu]]
+    comps = [[v, v_ * .01], [t, t_ * .01]]
 
     UncertCalc.Print('Flow Rate', f, comps ,sub)
 
@@ -72,11 +71,9 @@ class UncertCalc:
     Q_ = self.s["flow_rate (mL/min)"]
     h_ = self.s["height_col (mm)"]
     d_ = self.s["diam_col (mm)"]
-
-    Qu, hu, du = Q_*.01, h_*.01, d_*.01
     
     sub = {h: h_, d: d_, Q: Q_}
-    comps = [[h, hu], [d, du], [Q, Qu]]
+    comps = [[h, h_*.01], [d, d_*.01], [Q, Q_*.01]]
 
     UncertCalc.Print('Residence Time', f, comps, sub)
 
@@ -87,10 +84,8 @@ class UncertCalc:
     xC_ = self.s["x_convers"]
     tau_ = self.s["tau_c (min)"]
 
-    xCu, tauu  = xC_ *.01, tau_ *.01
-
     sub = {xC: xC_, tau: tau_}
-    comps = [[xC, xCu], [tau, tauu]]
+    comps = [[xC, xC_ *.01], [tau, tau_ *.01]]
 
     UncertCalc.Print('Rate Constant', f, comps, sub)
 
@@ -106,12 +101,9 @@ class UncertCalc:
     kC_ = self.s["k_c (1/s)"]
     kF_ = self.s["k_f (1/s)"]
 
-    phiCu = phiC_ *.01
-    rCu, rFu = rC_ *.01, rF_ *.01
-    kCu, kFu = kC_ *.01, kF_ *.01 
-
     sub = {phiC: phiC_, rC: rC_, rF: rF_, kC: kC_, kF: kF_}
-    comps = [[phiC, phiCu], [rC, rCu], [rF, rFu], [kC, kCu], [kF, kFu]]
+    comps = [[phiC, phiC_ *.01], [rC, rC_ *.01], 
+             [rF, rF_ *.01], [kC, kC_ *.01], [kF, kF_ *.01]]
     
     UncertCalc.Print('Thiele Modulus', f, comps, sub)
 
@@ -121,10 +113,8 @@ class UncertCalc:
 
     phiC_ = self.s["phi_c"]
 
-    phiCu = phiC_ * .01
-
     sub = {phiC: phiC_}
-    comps = [[phiC, phiCu]]
+    comps = [[phiC, phiC_ * .01]]
 
     UncertCalc.Print('Effectiveness Factor', f, comps, sub)
 
@@ -135,10 +125,8 @@ class UncertCalc:
     kC_ = self.s["k_c (1/s)"]
     etaC_ = self.s["eta_c"]
 
-    kCu, etaCu = kC_ *.01, etaC_ *.01
-
     sub = {kC: kC_, etaC: etaC_}
-    comps = [[kC, kCu], [etaC, etaCu]]
+    comps = [[kC, kC_ *.01], [etaC, etaC_ *.01]]
 
     UncertCalc.Print('True Rate Constants', f, comps, sub)
 
@@ -150,10 +138,8 @@ class UncertCalc:
     phiC_ = self.s["phi_c"]
     rC_ = self.s["radius_c_particle (mm)"] / 2
 
-    kTCu, phiCu, rCu = kTC_ *.01, phiC_ *.01, rC_ *.01
-
     sub = {kTC: kTC_, phiC: phiC_, rC: rC_}
-    comps = [[kTC, kTCu], [phiC, phiCu], [rC, rCu]]
+    comps = [[kTC, kTC_ *.01], [phiC, phiC_ *.01], [rC, rC_ *.01]]
 
     UncertCalc.Print('Diffusivity', f, comps, sub)
   
