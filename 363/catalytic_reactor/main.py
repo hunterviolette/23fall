@@ -14,6 +14,37 @@ class UncertCalc:
           self.s, sep='\n')
 
   @staticmethod
+  def Uncert(f, # Function 
+            comps: list, # List of [var, var_uncert]
+            sub: dict # Subsitution of variables with values
+          ):
+
+    df = pd.DataFrame()
+    for comp in comps:
+        assert len(comp) == 2
+        
+        df = pd.concat([
+            df,
+            pd.DataFrame({
+              'Component': [comp[0]],
+              'Value': [sub[comp[0]]],
+              'Uncert Value': [comp[1]],
+              'Relative Uncert': [(sp.diff(f, comp[0]).subs(sub)**2 * comp[1]**2)**.5],
+            })
+        ])
+
+    df = df.astype({"Relative Uncert": 'float'})
+
+    df["Total Uncert"] = df["Relative Uncert"].sum()
+    df['Uncert Contribution (%)'] = (df["Relative Uncert"] / df["Total Uncert"])*100 -1 
+
+    df = df.round({
+        "Uncert Contribution (%)": 2,
+      })
+
+    return df.set_index('Component')
+
+  @staticmethod
   def Print(metric, f, comps, sub):
     print('======',
           f'{metric} Uncert',
@@ -125,37 +156,6 @@ class UncertCalc:
     comps = [[kTC, kTCu], [phiC, phiCu], [rC, rCu]]
 
     UncertCalc.Print('Diffusivity', f, comps, sub)
-
-  @staticmethod
-  def Uncert(f, # Function 
-            comps: list, # List of [var, var_uncert]
-            sub: dict # Subsitution of variables with values
-          ):
-
-    df = pd.DataFrame()
-    for comp in comps:
-        assert len(comp) == 2
-        
-        df = pd.concat([
-            df,
-            pd.DataFrame({
-              'Component': [comp[0]],
-              'Value': [sub[comp[0]]],
-              'Uncert Value': [comp[1]],
-              'Relative Uncert': [(sp.diff(f, comp[0]).subs(sub)**2 * comp[1]**2)**.5],
-            })
-        ])
-
-    df = df.astype({"Relative Uncert": 'float'})
-
-    df["Total Uncert"] = df["Relative Uncert"].sum()
-    df['Uncert Contribution (%)'] = (df["Relative Uncert"] / df["Total Uncert"])*100 -1 
-
-    df = df.round({
-        "Uncert Contribution (%)": 2,
-      })
-
-    return df.set_index('Component')#.round(6)
   
   def All(self):
     UncertCalc.Flow(self)
