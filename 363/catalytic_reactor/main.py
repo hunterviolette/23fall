@@ -128,8 +128,8 @@ class UncertCalc:
 
   @staticmethod
   def Uncert(f, # Function 
-            comps: list, # List of variables in function 
-            sub: dict # Subsitution of variables with numbers
+            comps: list, # List of [var, var_uncert]
+            sub: dict # Subsitution of variables with values
           ):
 
     df = pd.DataFrame()
