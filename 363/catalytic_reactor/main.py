@@ -15,8 +15,8 @@ class UncertCalc:
           self.s, '========', sep='\n')
 
   def Uncert(self,
-            metric: str, # Function
-            f, # Function 
+            metric: str, # Function name
+            f: sp.core.mul.Mul, # Function 
             comps: list, # List of lists of [var, var_uncert]
             sub: dict # Subsitution of variables with values
           ):
