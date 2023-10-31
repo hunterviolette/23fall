@@ -141,6 +141,18 @@ class UncertCalc:
     comps = [[kTC, kTC_ *.01], [phiC, phiC_ *.01], [rC, rC_ *.01]]
 
     UncertCalc.Uncert(self, 'Diffusivity', f, comps, sub)
+
+  def Concentration(self):
+    slp, a = sp.symbols('slp a')
+    f = slp / a
+
+    slp_ = 0.00346
+    a_ = 0.000035
+
+    sub = {slp: slp_, a: a_}
+    comps = [[slp, slp_ *.01], [a, a_ *.01]]
+
+    UncertCalc.Uncert(self, 'Concentration', f, comps, sub)
   
   def All(self):
     UncertCalc.Flow(self)
@@ -150,6 +162,7 @@ class UncertCalc:
     UncertCalc.EffectivenessFactor(self)
     UncertCalc.TrueRateConstants(self)
     UncertCalc.Diffusivity(self)
+    UncertCalc.Concentration(self)
 
     print('========', 
           self.df.drop(['Input Uncert Value', 'Component Uncert'], axis=1), 
