@@ -151,6 +151,8 @@ class UncertCalc:
     UncertCalc.TrueRateConstants(self)
     UncertCalc.Diffusivity(self)
 
-    print('========', self.df, sep='\n')
+    print('========', 
+          self.df.drop(['Input Uncert Value', 'Component Uncert'], axis=1), 
+          sep='\n')
 
 UncertCalc().All()
