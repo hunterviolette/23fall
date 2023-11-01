@@ -32,10 +32,8 @@ class UncertCalc:
               'Input Value': [sub[comp[0]]],
               'Input Uncert Value': [comp[1]],
               'Component Uncert': [(sp.diff(f, comp[0]).subs(sub)**2 * comp[1]**2)**.5],
-            })
+            }).astype({"Component Uncert": 'float'})
         ])
-
-    df = df.astype({"Component Uncert": 'float'})
 
     df["Total Uncert"] = df["Component Uncert"].sum()
     df["Relative Uncert (%)"] = ((df["Total Uncert"] / f.subs(sub))*100).astype('float')
