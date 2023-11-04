@@ -1,18 +1,17 @@
 import sympy as sp
 import pandas as pd
 
+pd.set_option('display.max_rows', None)
+
 from math import pi
 
 class UncertCalc:
-  def __init__(self, trial: str = '1_coarse') -> None:
+  def __init__(self) -> None:
 
-    df = pd.read_csv('dat.csv', index_col='trial')
-    self.s = df.loc[df.index == trial].squeeze()
-
+    self.data = pd.read_csv('dat.csv', index_col='trial')
     self.df = pd.DataFrame()
-    
-    print(f'=== Input data, trial: {trial} ===',
-          self.s, '========', sep='\n')
+
+    self.functions = {}
 
   def Uncert(self,
             metric: str, # Function name
@@ -36,8 +35,8 @@ class UncertCalc:
         ])
 
     df["Total Uncert"] = df["Component Uncert"].sum()
-    df["Relative Uncert (%)"] = ((df["Total Uncert"] / f.subs(sub))*100).astype('float')
     df['Uncert Contribution (%)'] = (df["Component Uncert"] / df["Total Uncert"])*100 -1 
+    df["Relative Uncert (%)"] = ((df["Total Uncert"] / f.subs(sub))*100).astype('float')
     
     df = df.round({
         "Uncert Contribution (%)": 2,
@@ -45,13 +44,15 @@ class UncertCalc:
       })
     
     df["Metric"] = metric
+    df["Trial"] = self.s["trial"]
 
-    print(f"{metric}: {f}")
-    self.df = pd.concat([self.df, df.set_index(['Metric', 'Variable'])])
+    self.df = pd.concat([self.df, df])
     
   def Flow(self):
     v, t = sp.symbols('v t')
     f = v / t
+
+    self.functions["Flow Rate"] = f
 
     v_ = self.s["volume_flow (mL)"]
     t_ = self.s["time_flow (sec)"]
@@ -64,6 +65,8 @@ class UncertCalc:
   def ResidenceTime(self):
     h, d, q = sp.symbols('h d q')
     f = pi * h * (d / 2)**2 / q
+    
+    self.functions["Residence Time"] = f
 
     q_ = self.s["flow_rate (mL/min)"]
     h_ = self.s["height_col (mm)"]
@@ -75,14 +78,16 @@ class UncertCalc:
     UncertCalc.Uncert(self, 'Residence Time', f, comps, sub)
 
   def RateConstants(self):
-    xC, tau = sp.symbols('xC tau')
-    f = -sp.ln(1 - xC) / tau
+    x, tau = sp.symbols('x tau')
+    f = -sp.ln(1 - x) / tau
 
-    xC_ = self.s["x_convers"]
-    tau_ = self.s["tau_c (min)"]
+    self.functions["Rate Constant"] = f
 
-    sub = {xC: xC_, tau: tau_}
-    comps = [[xC, xC_ *.01], [tau, tau_ *.01]]
+    x_ = self.s["frac_conv"]
+    tau_ = self.s["tau (min)"]
+
+    sub = {x: x_, tau: tau_}
+    comps = [[x, x_ *.01], [tau, tau_ *.01]]
 
     UncertCalc.Uncert(self, 'Rate Constant', f, comps, sub)
 
@@ -91,12 +96,14 @@ class UncertCalc:
     f = (1 / sp.tanh(phiC) - 1 / phiC) / \
         (1 / sp.tanh(phiC * rF / rC) - (1 / (phiC * rF / rC))) - \
         ((kC * rC) / (kF * rF))
+    
+    self.functions["Thiele Modulus"] = f
       
-    phiC_ = self.s["phi_c"]
+    phiC_ = self.s["phi"]
     rC_ = self.s["radius_c_particle (mm)"] / 2
     rF_ = self.s["radius_f_particle (mm)"] / 2
-    kC_ = self.s["k_c (1/s)"]
-    kF_ = self.s["k_f (1/s)"]
+    kC_ = self.s["k_x (1/s)"]
+    kF_ = self.s["k_y (1/s)"]
 
     sub = {phiC: phiC_, rC: rC_, rF: rF_, kC: kC_, kF: kF_}
     comps = [[phiC, phiC_ *.01], [rC, rC_ *.01], 
@@ -105,38 +112,44 @@ class UncertCalc:
     UncertCalc.Uncert(self, 'Thiele Modulus', f, comps, sub)
 
   def EffectivenessFactor(self):
-    phiC = sp.symbols('phiC')
-    f = 3 / phiC * (1 / sp.tanh(phiC) - 1/phiC)
+    phi = sp.symbols('phi')
+    f = 3 / phi * (1 / sp.tanh(phi) - 1/phi)
 
-    phiC_ = self.s["phi_c"]
+    self.functions["Effectiveness Factor"] = f
 
-    sub = {phiC: phiC_}
-    comps = [[phiC, phiC_ * .01]]
+    phi_ = self.s["phi"]
+
+    sub = {phi: phi_}
+    comps = [[phi, phi_ * .01]]
 
     UncertCalc.Uncert(self, 'Effectiveness Factor', f, comps, sub)
 
   def TrueRateConstants(self):
-    kC, etaC = sp.symbols('kC etaC')
-    f = kC / etaC
+    k, eta = sp.symbols('k eta')
+    f = k / eta
 
-    kC_ = self.s["k_c (1/s)"]
-    etaC_ = self.s["eta_c"]
+    self.functions["True Rate Constants"] = f
 
-    sub = {kC: kC_, etaC: etaC_}
-    comps = [[kC, kC_ *.01], [etaC, etaC_ *.01]]
+
+    k_ = self.s["k_x (1/s)"]
+    eta_ = self.s["eta"]
+
+    sub = {k: k_, eta: eta_}
+    comps = [[k, k_ *.01], [eta, eta_ *.01]]
 
     UncertCalc.Uncert(self, 'True Rate Constants', f, comps, sub)
 
   def Diffusivity(self):
-    kTC, phiC, rC = sp.symbols('kTC phiC rC')
-    f = kTC / (phiC / rC)**2
+    kT, phi, r = sp.symbols('kT phi r')
+    f = kT / (phi / r)**2
 
-    kTC_ = self.s["kT_c (1/s)"]
-    phiC_ = self.s["phi_c"]
-    rC_ = self.s["radius_c_particle (mm)"] / 2
+    self.functions["Diffusivity"] = f
 
-    sub = {kTC: kTC_, phiC: phiC_, rC: rC_}
-    comps = [[kTC, kTC_ *.01], [phiC, phiC_ *.01], [rC, rC_ *.01]]
+    kT_ = self.s["kT (1/s)"]
+    phi_ = self.s["phi"]
+
+    sub = {kT: kT_, phi: phi_, r: self.r}
+    comps = [[kT, kT_ *.01], [phi, phi_ *.01], [r, self.r *.01]]
 
     UncertCalc.Uncert(self, 'Diffusivity', f, comps, sub)
 
@@ -144,8 +157,10 @@ class UncertCalc:
     slp, a = sp.symbols('slp a')
     f = slp / a
 
-    slp_ = 0.00346
-    a_ = 0.000035
+    self.functions["Concentration"] = f
+
+    slp_ = self.s["slp"]
+    a_ = self.s["a"]
 
     sub = {slp: slp_, a: a_}
     comps = [[slp, slp_ *.01], [a, a_ *.01]]
@@ -153,17 +168,31 @@ class UncertCalc:
     UncertCalc.Uncert(self, 'Concentration', f, comps, sub)
   
   def All(self):
-    UncertCalc.Flow(self)
-    UncertCalc.ResidenceTime(self)
-    UncertCalc.RateConstants(self)
-    UncertCalc.ThieleModulus(self)
-    UncertCalc.EffectivenessFactor(self)
-    UncertCalc.TrueRateConstants(self)
-    UncertCalc.Diffusivity(self)
-    UncertCalc.Concentration(self)
+    for i, x in self.data.iterrows():
+      self.s, col = x, i.split("_")[1]
+      self.s["trial"] = i
+      
+      if col == 'coarse': 
+        self.r = x['radius_c_particle (mm)'] / 2
+        UncertCalc.ThieleModulus(self)
 
-    print('========', 
-          self.df.drop(['Input Uncert Value', 'Component Uncert'], axis=1), 
-          sep='\n')
+      else: self.r = x['radius_f_particle (mm)'] / 2
+
+      UncertCalc.Flow(self)
+      UncertCalc.ResidenceTime(self)
+      UncertCalc.RateConstants(self)
+      UncertCalc.EffectivenessFactor(self)
+      UncertCalc.TrueRateConstants(self)
+      UncertCalc.Diffusivity(self)
+      UncertCalc.Concentration(self)
+
+    for x in self.df["Metric"].unique():
+      print('========', 
+            f'{x} function: {self.functions[x]}',
+            self.df.loc[self.df["Metric"] == x
+                ].drop(['Input Uncert Value', 'Component Uncert', 'Metric'], axis=1
+                ).set_index(["Trial", 'Total Uncert', 'Variable']),
+            sep='\n')
+
 
 UncertCalc().All()
