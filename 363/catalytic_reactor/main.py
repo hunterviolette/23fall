@@ -190,7 +190,7 @@ class UncertCalc:
             f'{x} function: {self.functions[x]}',
             self.df.loc[self.df["Metric"] == x
                 ].drop(['Input Uncert Value', 'Component Uncert', 'Metric'], axis=1
-                ).set_index(["Trial", 'Total Uncert', 'Variable']),
+                ).set_index(["Trial", 'Total Uncert', 'Relative Uncert (%)', 'Variable']),
             sep='\n')
 
 
