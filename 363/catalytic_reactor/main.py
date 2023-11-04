@@ -130,7 +130,6 @@ class UncertCalc:
 
     self.functions["True Rate Constants"] = f
 
-
     k_ = self.s["k_x (1/s)"]
     eta_ = self.s["eta"]
 
