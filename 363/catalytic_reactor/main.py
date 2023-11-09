@@ -39,7 +39,7 @@ class UncertCalc:
     df["Relative Uncert (%)"] = ((df["Total Uncert"] / f.subs(sub))*100).astype('float')
 
     if metric == 'Thiele Modulus':
-      df["Relative Uncert (%)"] = df["Relative Uncert (%)"].abs() / 1000
+      df["Relative Uncert (%)"] = df["Relative Uncert (%)"].abs() / 1e3
     
     df = df.round({
         "Uncert Contribution (%)": 2,
@@ -188,7 +188,8 @@ class UncertCalc:
       UncertCalc.Diffusivity(self)
       UncertCalc.Concentration(self)
 
-    for x in self.df.loc[~self.df["Trial"].isin(["34_coarse", "34_fine"])]["Metric"].unique():
+    self.df = self.df.loc[~self.df["Trial"].isin(["34_coarse", "34_fine"])]
+    for x in self.df["Metric"].unique():
       print('========', 
             f'{x} function: {self.functions[x]}',
             self.df.loc[self.df["Metric"] == x
