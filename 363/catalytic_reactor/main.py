@@ -37,6 +37,9 @@ class UncertCalc:
     df["Total Uncert"] = df["Component Uncert"].sum()
     df['Uncert Contribution (%)'] = (df["Component Uncert"] / df["Total Uncert"])*100 -1 
     df["Relative Uncert (%)"] = ((df["Total Uncert"] / f.subs(sub))*100).astype('float')
+
+    if metric == 'Thiele Modulus':
+      df["Relative Uncert (%)"] = df["Relative Uncert (%)"].abs() / 1000
     
     df = df.round({
         "Uncert Contribution (%)": 2,
@@ -68,9 +71,9 @@ class UncertCalc:
     
     self.functions["Residence Time"] = f
 
-    q_ = self.s["flow_rate (mL/min)"]
-    h_ = self.s["height_col (mm)"]
-    d_ = self.s["diam_col (mm)"]
+    q_ = self.s["flow_rate (mL/min)"] # 9.47 mL
+    h_ = self.s["height_col (mm)"] # 234 mm
+    d_ = self.s["diam_col (mm)"] # 25 mm
     
     sub = {h: h_, d: d_, q: q_}
     comps = [[h, h_*.01], [d, d_*.01], [q, q_*.01]]
@@ -92,21 +95,21 @@ class UncertCalc:
     UncertCalc.Uncert(self, 'Rate Constant', f, comps, sub)
 
   def ThieleModulus(self):
-    phiC, rC, rF, kC, kF = sp.symbols('phiC rC rF kC kF')
-    f = (1 / sp.tanh(phiC) - 1 / phiC) / \
-        (1 / sp.tanh(phiC * rF / rC) - (1 / (phiC * rF / rC))) - \
+    phi, rC, rF, kC, kF = sp.symbols('phi rC rF kC kF')
+    f = (1 / sp.tanh(phi) - 1 / phi) / \
+        (1 / sp.tanh(phi * rF / rC) - (1 / (phi * rF / rC))) - \
         ((kC * rC) / (kF * rF))
     
     self.functions["Thiele Modulus"] = f
       
-    phiC_ = self.s["phi"]
+    phi_ = self.s["phi"]
     rC_ = self.s["radius_c_particle (mm)"] / 2
     rF_ = self.s["radius_f_particle (mm)"] / 2
     kC_ = self.s["k_x (1/s)"]
     kF_ = self.s["k_y (1/s)"]
 
-    sub = {phiC: phiC_, rC: rC_, rF: rF_, kC: kC_, kF: kF_}
-    comps = [[phiC, phiC_ *.01], [rC, rC_ *.01], 
+    sub = {phi: phi_, rC: rC_, rF: rF_, kC: kC_, kF: kF_}
+    comps = [[phi, phi_ *.01], [rC, rC_ *.01], 
              [rF, rF_ *.01], [kC, kC_ *.01], [kF, kF_ *.01]]
     
     UncertCalc.Uncert(self, 'Thiele Modulus', f, comps, sub)
@@ -185,11 +188,11 @@ class UncertCalc:
       UncertCalc.Diffusivity(self)
       UncertCalc.Concentration(self)
 
-    for x in self.df["Metric"].unique():
+    for x in self.df.loc[~self.df["Trial"].isin(["34_coarse", "34_fine"])]["Metric"].unique():
       print('========', 
             f'{x} function: {self.functions[x]}',
             self.df.loc[self.df["Metric"] == x
-                ].drop(['Input Uncert Value', 'Component Uncert', 'Metric'], axis=1
+                ].drop(['Input Uncert Value', 'Component Uncert', 'Metric', "Input Value"], axis=1
                 ).set_index(["Trial", 'Total Uncert', 'Relative Uncert (%)', 'Variable']),
             sep='\n')
 
