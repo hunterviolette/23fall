@@ -35,7 +35,7 @@ class UncertCalc:
         ])
 
     df["Total Uncert"] = df["Component Uncert"].sum()
-    df['Uncert Contribution (%)'] = (df["Component Uncert"] / df["Total Uncert"])*100 -1 
+    df['Uncert Contribution (%)'] = (df["Component Uncert"] / df["Total Uncert"])*100 
     df["Relative Uncert (%)"] = ((df["Total Uncert"] / f.subs(sub))*100).astype('float')
 
     if metric == 'Thiele Modulus':
