@@ -22,6 +22,7 @@ fig = go.Figure()
 for x in df.species.unique():
   
   d = df.loc[df["species"] == x]
+  
   slope, intercept, r_value, p_value, std_err = linregress(d["perm_dp (psi)"], d["flux (gm/m**2/s)"])
   d["linReg"] = slope * d["perm_dp (psi)"] + intercept
 
