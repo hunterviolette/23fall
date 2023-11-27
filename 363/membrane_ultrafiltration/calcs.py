@@ -13,10 +13,10 @@ q = uReg.Quantity
 
 df = pd.read_csv('data.csv')
 
-def ResidenceTime(flowRate):
+def FluxCalc(flowRate):
     return (q(flowRate, 'grams/min') / q(.11, 'm**2')).to('grams/s/m**2').magnitude
 
-df["flux (gm/m**2/s)"] = df['perm_flow (gm/min)'].apply(ResidenceTime)
+df["flux (gm/m**2/s)"] = df['perm_flow (gm/min)'].apply(FluxCalc)
 
 fig = go.Figure()
 for x in df.species.unique():
