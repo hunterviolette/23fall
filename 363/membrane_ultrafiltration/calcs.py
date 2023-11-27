@@ -21,10 +21,12 @@ df["flux (gm/m**2/s)"] = df['perm_flow (gm/min)'].apply(ResidenceTime)
 fig = go.Figure()
 for x in df.species.unique():
   
-  d = df.loc[df["species"] == x]
-  
+  d = df.loc[df["species"] == x].copy()
+
   slope, intercept, r_value, p_value, std_err = linregress(d["perm_dp (psi)"], d["flux (gm/m**2/s)"])
   d["linReg"] = slope * d["perm_dp (psi)"] + intercept
+
+  print(d)
 
   fig.add_trace(go.Scatter(
                           x=d["perm_dp (psi)"], 
