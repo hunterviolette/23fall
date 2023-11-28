@@ -20,13 +20,42 @@ class Heuristics:
         flowF = q(7403.5, 'kmol/h')
         flowB = q(7141.7, 'kmol/h')
         flowD = flowF - flowB 
+        
+        def vapP(T, comp: bool = True): # True = water, False = etox
+            if comp: a,b,c = 8.055729, 1723.6425115, 233.076427
+            else : a,b,c = 7.274009, 1114.77883, 243.301237
 
-        def Raoults(T, comp):
-            if comp == 'water': a,b,c,d,e = 8.7904, -1433.716, -1.1675, -.007132, 8.164e-6
-            else : a,b,c,d,e = 
+            return q(10**(a - b / (T.to('degC') + c)), 'mmHg')
+        
+        ## not real numbers   
+        x,y = 1,2
+        t_ = q(25, 'degC')
+        alpha = vapP(t_) / vapP(t_ , False)
+        ##
 
-        alpha = pX / pY
         nMin = log((x / (1-x)) / ((y / (1-y)))) / log(alpha) 
+
+    def P_701():
+        # not real numbers
+        flow = q(10965, 'kg/h')
+        density = q(800, 'kg/m**3')
+        dP = q(29 - 4, 'psi').to('bar')
+        ###
+
+        power = q(1.67 
+                 * (flow / density).to('m**3/min').magnitude 
+                 * dP.magnitude, 'kW')
+        
+        head = (dP / (density * q(1, 'standard_gravity'))).to('ft')
+
+        shaftPower = power / .8
+
+        print(
+            '=== Calculations for unit P-701 ===', 
+            f"fluid power: {power}", 
+            f"fluid head: {head}", 
+            f"shaft power: {shaftPower}",
+            sep='\n')
 
     def HeatX(unit, th1, th2, tc1, tc2, Q, U, F):
         Tlm = ((th1 - tc2) - (th2 - tc1)) / log((th1 - tc2) / (th2 - tc1))
@@ -46,7 +75,7 @@ class Heuristics:
             q(30, 'degC'), # tc1
             q(40, 'degC'), # tc2
             q(61400, 'MJ/h'), # Q, given
-            q(1140, 'W/m**2/delta_degC'), # U, gas-to-gas item 8
+            q(1140, 'W/m**2/delta_degC'), # U, item 8
             .9, # F, item 1
         )
         
@@ -57,8 +86,10 @@ class Heuristics:
             q(30, 'degC'), # tc1
             q(40, 'degC'), # tc2
             q(113300, 'MJ/h'), # Q, given
-            q(850, 'W/m**2/delta_degC'), # U, gas-to-gas item 8
+            q(850, 'W/m**2/delta_degC'), # U, item 8
             .9 # F, item 1
         )
+
+        Heuristics.P_701()
 
 Heuristics.Equipment()
