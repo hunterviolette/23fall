@@ -2,7 +2,6 @@ import pandas as pd
 import pint 
 import plotly.graph_objects as go
 import plotly.io as pio
-
 from scipy.stats import linregress
 
 pio.templates.default = "plotly_dark"
@@ -32,7 +31,7 @@ for x in df.species.unique():
                           x=d["dp (psi)"], 
                           y=d["flux (gm/m**2/s)"], 
                           mode='markers', 
-                          name=x
+                          name=x,
                         ))
   
   fig.add_trace(go.Scatter(
@@ -42,11 +41,19 @@ for x in df.species.unique():
                         name=f"{x}-linReg"
                       ))
 
+text_annotations = [dict(
+      x=x,
+      y=y + 0.3, 
+      text=str(y),
+      showarrow=False,
+  ) for x, y in zip(df["dp (psi)"], df["flux (gm/m**2/s)"].round(2))]
+
 fig.update_layout(
     title='Membrane Ultrafiltration',
     xaxis_title='Change in Pressure (psi)',
     yaxis_title='Flux (gm/m**2/s)',
     legend=dict(title='Legend'),
+    annotations=text_annotations
 )
 
 fig.show()
