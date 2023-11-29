@@ -41,7 +41,6 @@ class PinchProj:
         else: ty, tx = t0, t1
         
         kW = (q(m, 'kg/s') * q(cp, 'kJ/kg/degK') * q(tx - ty, 'degK')).to('kW')
-
         if tx < boilingPoint < ty:
             kW += q(m, 'kg/s') * q(heatVap, 'kJ/kg') * -1
 
@@ -54,8 +53,7 @@ class PinchProj:
         min1, max1 = sorted(list1)
         min2, max2 = sorted(list2)
 
-        commonMin = max(min1, min2)
-        commonMax = min(max1, max2)
+        commonMin, commonMax = max(min1, min2), min(max1, max2)
 
         if commonMin <= commonMax: 
             if verbose: print(
