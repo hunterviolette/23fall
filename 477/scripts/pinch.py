@@ -32,16 +32,16 @@ class PinchProj:
             cp, 
             t0,
             t1,
-            phaseChange: bool = False,
+            boilingPoint,
             heatVap: float = 0 
         ):
         
         kW = (q(m, 'kg/s') * q(cp, 'kJ/kg/degK') * q(t1 - t0, 'degK')).to('kW')
-        
-        if not phaseChange: return kW.magnitude
-        else: 
-            if heatVap == 0: raise Exception("Specifiy heat of vaporization")
-            return (kW + q(m, 'kg/s') * q(heatVap, 'kJ/kg')).magnitude
+
+        if t1 < boilingPoint < t0:
+            kW += q(m, 'kg/s') * q(heatVap, 'kJ/kg') * -1
+
+        return kW.magnitude
 
     @staticmethod
     def CommonRange(list1: list, list2: list, verbose: bool = False):
@@ -76,7 +76,7 @@ class PinchProj:
             zoneTemps.extend([x + approachT for x in pd.concat(
                 [t["Start Temp (C)"], t["End Temp (C)"]]).unique().tolist()])
             
-            zoneTemps = sorted(list(set(zoneTemps)), reverse=True)
+            zoneTemps = sorted(list(set(zoneTemps)), reverse=False)
             for i in range(len(zoneTemps) - 1):
                 zdf = pd.concat([
                     pd.DataFrame([
@@ -101,25 +101,29 @@ class PinchProj:
                                 range1, [x["Start Temp (C)"], x["End Temp (C)"]])
                 if dT[0] > 0:
                     if x["Stream Type"] == 'Hot': kW = PinchProj.HeatDuty(
-                                                                    x["Flow Rate (kg/s)"],
-                                                                    x["Heat Capacity (kJ/kg/K)"],
-                                                                    dT[1], 
-                                                                    dT[2]
-                                                                )
+                                                            x["Flow Rate (kg/s)"],
+                                                            x["Heat Capacity (kJ/kg/K)"],
+                                                            dT[1], 
+                                                            dT[2],
+                                                            x["Boiling Point (C)"],
+                                                            heatVap=x["Heat of Vaporization (kJ/kg)"]
+                                                        )
                     else:
                         if i == 3: kW = PinchProj.HeatDuty(
                                 x["Flow Rate (kg/s)"],
                                 x["Heat Capacity (kJ/kg/K)"],
                                 dT[2], 
                                 dT[1],
-                                phaseChange=True,
+                                x["Boiling Point (C)"],
                                 heatVap=x["Heat of Vaporization (kJ/kg)"]
                             )
                         else: kW = PinchProj.HeatDuty(
                                 x["Flow Rate (kg/s)"],
                                 x["Heat Capacity (kJ/kg/K)"],
                                 dT[2], 
-                                dT[1]
+                                dT[1],
+                                x["Boiling Point (C)"],
+                                heatVap=x["Heat of Vaporization (kJ/kg)"]
                             )
                 else: kW = 0
 
@@ -131,7 +135,8 @@ class PinchProj:
         for x in zdf["Degree Approach"].unique():
             zd = zdf.loc[zdf["Degree Approach"] == x].copy()
             zd["Sum of Net Energy (kW)"] = zd["Net Energy (kW)"] + zd["Net Energy (kW)"].shift(1, fill_value = 0)
-
+            zd.loc[(zd["Sum of Net Energy (kW)"] > 0) & (zd["Sum of Net Energy (kW)"].shift(1, fill_value=0) < 0), 'Pinch Point'] = True
+            zd["Pinch Point"] = zd["Pinch Point"].fillna(False)
             print(f"=== Stream table for {x} Degree Approach ===", zd, sep='\n')
 
 
