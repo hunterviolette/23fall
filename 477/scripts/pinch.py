@@ -125,6 +125,15 @@ class PinchProj:
 
                 zdf.loc[zdf.index == zi, f'Stream {i+1} Energy (kW)'] = kW
 
-        print(zdf)
+        zdf["Net Energy (kW)"] = zdf[[f"Stream {x} Energy (kW)" for x in range(1,5)]
+                                    ].sum(axis=1)
+
+        for x in zdf["Degree Approach"].unique():
+            zd = zdf.loc[zdf["Degree Approach"] == x].copy()
+            zd["Sum of Net Energy (kW)"] = zd["Net Energy (kW)"] + zd["Net Energy (kW)"].shift(1, fill_value = 0)
+
+            print(f"=== Stream table for {x} Degree Approach ===", zd, sep='\n')
+
+
         
 PinchProj().main()
