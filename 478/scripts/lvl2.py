@@ -20,20 +20,25 @@ class Heuristics:
         flowF = q(7403.5, 'kmol/h')
         flowB = q(7141.7, 'kmol/h')
         flowD = flowF - flowB 
+        presFeed = q(21, 'bar')
         
         def vapP(T, comp: bool = True): # True = water, False = etox
             if comp: a,b,c = 8.055729, 1723.6425115, 233.076427
             else : a,b,c = 7.274009, 1114.77883, 243.301237
 
-            return q(10**(a - b / (T.to('degC') + c)), 'mmHg')
+            return q(10**(a - b / (T.to('degC').magnitude + c)), 'mmHg')
         
         ## not real numbers   
-        x,y = 1,2
-        t_ = q(25, 'degC')
+        x,y = 5,6
+        t_ = q(70.2, 'degC')
         alpha = vapP(t_) / vapP(t_ , False)
         ##
 
         nMin = log((x / (1-x)) / ((y / (1-y)))) / log(alpha) 
+        print(alpha, nMin, sep='\n')
+        
+    def V_701():
+        pass
 
     def P_701():
         # not real numbers
@@ -92,4 +97,4 @@ class Heuristics:
 
         Heuristics.P_701()
 
-Heuristics.Equipment()
+Heuristics.T_702()
