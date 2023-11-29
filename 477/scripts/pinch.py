@@ -28,6 +28,7 @@ class PinchProj:
 
     @staticmethod
     def HeatDuty(
+            streamType,
             m,
             cp, 
             t0,
@@ -35,10 +36,13 @@ class PinchProj:
             boilingPoint,
             heatVap: float = 0 
         ):
-        
-        kW = (q(m, 'kg/s') * q(cp, 'kJ/kg/degK') * q(t1 - t0, 'degK')).to('kW')
 
-        if t1 < boilingPoint < t0:
+        if streamType == "Hot": ty, tx = t1, t0
+        else: ty, tx = t0, t1
+        
+        kW = (q(m, 'kg/s') * q(cp, 'kJ/kg/degK') * q(tx - ty, 'degK')).to('kW')
+
+        if tx < boilingPoint < ty:
             kW += q(m, 'kg/s') * q(heatVap, 'kJ/kg') * -1
 
         return kW.magnitude
@@ -88,7 +92,7 @@ class PinchProj:
         
         zdf["ColdStartT"] = zdf["HotStartT"] - zdf["Degree Approach"]
         zdf["ColdEndT"] = zdf["HotEndT"] - zdf["Degree Approach"]
-        zdf["deltaT"] = zdf["HotStartT"] - zdf["HotEndT"]
+        zdf["deltaT"] = zdf["HotEndT"] - zdf["HotStartT"]
 
         for zi, zx in zdf.iterrows():
             for i, x in self.df.iterrows():
@@ -98,31 +102,16 @@ class PinchProj:
                 dT = PinchProj.CommonRange(
                                 range1, [x["Start Temp (C)"], x["End Temp (C)"]])
                 if dT[0] > 0:
-                    if x["Stream Type"] == 'Hot': kW = PinchProj.HeatDuty(
-                                                            x["Flow Rate (kg/s)"],
-                                                            x["Heat Capacity (kJ/kg/K)"],
-                                                            dT[1], 
-                                                            dT[2],
-                                                            x["Boiling Point (C)"],
-                                                            heatVap=x["Heat of Vaporization (kJ/kg)"]
-                                                        )
-                    else:
-                        if i == 3: kW = PinchProj.HeatDuty(
-                                x["Flow Rate (kg/s)"],
-                                x["Heat Capacity (kJ/kg/K)"],
-                                dT[2], 
-                                dT[1],
-                                x["Boiling Point (C)"],
-                                heatVap=x["Heat of Vaporization (kJ/kg)"]
-                            )
-                        else: kW = PinchProj.HeatDuty(
-                                x["Flow Rate (kg/s)"],
-                                x["Heat Capacity (kJ/kg/K)"],
-                                dT[2], 
-                                dT[1],
-                                x["Boiling Point (C)"],
-                                heatVap=x["Heat of Vaporization (kJ/kg)"]
-                            )
+                    kW = PinchProj.HeatDuty(
+                            x["Stream Type"],
+                            x["Flow Rate (kg/s)"],
+                            x["Heat Capacity (kJ/kg/K)"],
+                            dT[2], 
+                            dT[1],
+                            x["Boiling Point (C)"],
+                            heatVap=x["Heat of Vaporization (kJ/kg)"]
+                        )
+                
                 else: kW = 0
 
                 zdf.loc[zdf.index == zi, f'Stream {i+1} Energy (kW)'] = kW
