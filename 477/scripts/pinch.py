@@ -136,7 +136,5 @@ class PinchProj:
             zd.loc[(zd["Sum of Net Energy (kW)"] > 0) & (zd["Sum of Net Energy (kW)"].shift(1, fill_value=0) < 0), 'Pinch Point'] = True
             zd["Pinch Point"] = zd["Pinch Point"].fillna(False)
             print(f"=== Stream table for {x} Degree Approach ===", zd, sep='\n')
-
-
         
 PinchProj().main()
