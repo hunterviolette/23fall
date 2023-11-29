@@ -90,8 +90,6 @@ class PinchProj:
         zdf["ColdEndT"] = zdf["HotEndT"] - zdf["Degree Approach"]
         zdf["deltaT"] = zdf["HotStartT"] - zdf["HotEndT"]
 
-        #print(self.df, zdf, sep='\n')
-
         for zi, zx in zdf.iterrows():
             for i, x in self.df.iterrows():
                 if x["Stream Type"] == 'Hot': range1 = [zx["HotStartT"], zx["HotEndT"]]
