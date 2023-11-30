@@ -67,6 +67,29 @@ class PinchProj:
             if verbose: print("No common range")
             return [0]
 
+    @staticmethod
+    def Df_To_HTML(df: pd.DataFrame, name: str = 'mdf'):
+        style = [
+            dict(selector="th", props=[("background-color", "#154c79"),
+                                        ("color", "white"),
+                                        ("border", "1px solid white"),
+                                        ("text-align", "center"),
+                                        ("font-size", "16px"),
+                                        ("padding", "4px"),
+                                        ("font-weight", "bold")]),
+            dict(selector="td", props=[("background-color", "lightgray"),
+                                        ("color", "black"),
+                                        ("border", "1px solid black"),
+                                        ("text-align", "center"),
+                                        ("font-size", "14px"),
+                                        ("padding", "4px")]),
+        ]
+
+        with open(f'{name}.html', 'w', encoding='utf-8') as file:
+            file.write(df.style.set_table_styles(style
+                        ).format(precision=2
+                        ).to_html())
+
     def main(self):
 
         zdf = pd.DataFrame()
@@ -117,11 +140,24 @@ class PinchProj:
         zdf["Net Energy (kW)"] = zdf[[f"Stream {x} Energy (kW)" for x in range(1,5)]
                                     ].sum(axis=1)
 
+        mdf = pd.DataFrame()
         for x in zdf["Degree Approach"].unique():
             zd = zdf.loc[zdf["Degree Approach"] == x].copy()
             zd["Sum of Net Energy (kW)"] = zd["Net Energy (kW)"] + zd["Net Energy (kW)"].shift(1, fill_value = 0)
             zd.loc[(zd["Sum of Net Energy (kW)"] > 0) & (zd["Sum of Net Energy (kW)"].shift(1, fill_value=0) < 0), 'Pinch Point'] = True
             zd["Pinch Point"] = zd["Pinch Point"].fillna(False)
-            print(f"=== Stream table for {x} Degree Approach ===", zd, sep='\n')
+
+            print(f"=== Stream table for {x} Degree Approach ===", 
+                zd,
+                sep='\n')
+
+            mdf = pd.concat([mdf, zd])
         
+        PinchProj.Df_To_HTML(mdf.set_index(['Degree Approach', 'HotStartT', 
+                                            'HotEndT', 'ColdStartT', 'ColdEndT']
+                                            ).round(2))
+
+        
+
+
 PinchProj().main()
