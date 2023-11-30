@@ -1,5 +1,10 @@
 import pandas as pd 
 import pint
+import plotly.graph_objects as go
+import plotly.io as pio
+
+pio.templates.default = "plotly_dark"
+
 
 uReg = pint.UnitRegistry(autoconvert_offset_to_baseunit = True)
 uReg.default_format = "~P"
@@ -24,7 +29,8 @@ class PinchProj:
                 'Boiling Point (C)', 'Heat of Vaporization (kJ/kg)', 'Stream Type']
         )
         
-        self.approachT = [0, 5, 10, 15, 20]
+        #self.approachT = [0, 5, 10, 15, 20]
+        self.approachT = [x for x in range(2, 25, 1)]
 
     @staticmethod
     def HeatDuty(
@@ -140,24 +146,64 @@ class PinchProj:
         zdf["Net Energy (kW)"] = zdf[[f"Stream {x} Energy (kW)" for x in range(1,5)]
                                     ].sum(axis=1)
 
-        mdf = pd.DataFrame()
+        mdf, udf = pd.DataFrame(), pd.DataFrame()
         for x in zdf["Degree Approach"].unique():
             zd = zdf.loc[zdf["Degree Approach"] == x].copy()
             zd["Sum of Net Energy (kW)"] = zd["Net Energy (kW)"] + zd["Net Energy (kW)"].shift(1, fill_value = 0)
             zd.loc[(zd["Sum of Net Energy (kW)"] > 0) & (zd["Sum of Net Energy (kW)"].shift(1, fill_value=0) < 0), 'Pinch Point'] = True
             zd["Pinch Point"] = zd["Pinch Point"].fillna(False)
 
-            print(f"=== Stream table for {x} Degree Approach ===", 
-                zd,
-                sep='\n')
-
             mdf = pd.concat([mdf, zd])
-        
+            
+            if zd['Pinch Point'].value_counts()[True] == 1:
+
+                udf = pd.concat([
+                    pd.DataFrame({
+                        "Degree Approach": [x],
+                        "Heating Utility": [zd.at[zd.loc[zd["Pinch Point"] == True].index.values[0] - 1,
+                                                  "Sum of Net Energy (kW)"]],
+                        "Cooling Utility": [zd["Sum of Net Energy (kW)"].iloc[-1]]
+                    }),
+                    udf
+                ])
+            else:
+                udf = pd.concat([
+                    pd.DataFrame({
+                        "Degree Approach": [x],
+                        "Heating Utility": [0],
+                        "Cooling Utility": [0]
+                    }),
+                    udf
+                ])
+                
         PinchProj.Df_To_HTML(mdf.set_index(['Degree Approach', 'HotStartT', 
                                             'HotEndT', 'ColdStartT', 'ColdEndT']
                                             ).round(2))
-
         
+        fig = go.Figure()
+        
+        fig.add_trace(go.Scatter(
+                        x=udf["Degree Approach"],
+                        y=udf["Heating Utility"],
+                        mode='lines',
+                        name='Heating Utility'
+                    ))
+        
+        fig.add_trace(go.Scatter(
+                        x=udf["Degree Approach"],
+                        y=udf["Cooling Utility"],
+                        mode='lines',
+                        name='Cooling Utility'
+                    ))
+                        
+        fig.update_layout(
+            title='Degree Approach vs Utility Usage',
+            xaxis_title='Degree Approach',
+            yaxis_title='Utility Usage',
+            legend=dict(title='Legend'),
+        )
+        
+        fig.show()
 
 
 PinchProj().main()
