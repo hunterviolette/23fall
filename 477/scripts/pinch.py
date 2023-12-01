@@ -74,7 +74,7 @@ class PinchProj:
             return [0]
 
     @staticmethod
-    def Df_To_HTML(df: pd.DataFrame, name: str = 'mdf'):
+    def Df_To_HTML(dfs, name: str = 'mdf'):
         style = [
             dict(selector="th", props=[("background-color", "#154c79"),
                                         ("color", "white"),
@@ -92,10 +92,12 @@ class PinchProj:
         ]
 
         with open(f'{name}.html', 'w', encoding='utf-8') as file:
-            file.write(df.style.set_table_styles(style
-                        ).format(precision=2
-                        ).to_html())
-
+            for df in dfs:
+                file.write(f"<h2>{df.index.unique()[0][0]} Degree Approach:</h2>")
+                file.write(df.style.set_table_styles(style
+                            ).format(precision=2
+                            ).to_html())
+                file.write("<br>")
     def main(self):
 
         zdf = pd.DataFrame()
@@ -146,14 +148,16 @@ class PinchProj:
         zdf["Net Energy (kW)"] = zdf[[f"Stream {x} Energy (kW)" for x in range(1,5)]
                                     ].sum(axis=1)
 
-        mdf, udf = pd.DataFrame(), pd.DataFrame()
+        mdf, udf = [], pd.DataFrame()
         for x in zdf["Degree Approach"].unique():
             zd = zdf.loc[zdf["Degree Approach"] == x].copy()
             zd["Sum of Net Energy (kW)"] = zd["Net Energy (kW)"] + zd["Net Energy (kW)"].shift(1, fill_value = 0)
             zd.loc[(zd["Sum of Net Energy (kW)"] > 0) & (zd["Sum of Net Energy (kW)"].shift(1, fill_value=0) < 0), 'Pinch Point'] = True
             zd["Pinch Point"] = zd["Pinch Point"].fillna(False)
 
-            mdf = pd.concat([mdf, zd])
+            mdf.append(zd.set_index(['Degree Approach', 'HotStartT', 
+                                    'HotEndT', 'ColdStartT', 'ColdEndT']
+                                    ).round(2))
             
             if zd['Pinch Point'].value_counts()[True] == 1:
 
@@ -176,9 +180,7 @@ class PinchProj:
                     udf
                 ])
                 
-        PinchProj.Df_To_HTML(mdf.set_index(['Degree Approach', 'HotStartT', 
-                                            'HotEndT', 'ColdStartT', 'ColdEndT']
-                                            ).round(2))
+        PinchProj.Df_To_HTML(mdf)
         
         fig = go.Figure()
         
@@ -204,6 +206,5 @@ class PinchProj:
         )
         
         fig.show()
-
 
 PinchProj().main()
