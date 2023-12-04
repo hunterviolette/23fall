@@ -5,7 +5,6 @@ import plotly.io as pio
 
 pio.templates.default = "plotly_dark"
 
-
 uReg = pint.UnitRegistry(autoconvert_offset_to_baseunit = True)
 uReg.default_format = "~P"
 q = uReg.Quantity
@@ -150,22 +149,46 @@ class PinchProj:
 
         mdf, udf = [], pd.DataFrame()
         for x in zdf["Degree Approach"].unique():
-            zd = zdf.loc[zdf["Degree Approach"] == x].copy()
-            zd["Sum of Net Energy (kW)"] = zd["Net Energy (kW)"] + zd["Net Energy (kW)"].shift(1, fill_value = 0)
-            zd.loc[(zd["Sum of Net Energy (kW)"] > 0) & (zd["Sum of Net Energy (kW)"].shift(1, fill_value=0) < 0), 'Pinch Point'] = True
+            zd = zdf.loc[zdf["Degree Approach"] == x].copy().reset_index(drop=True)
+            
+            zd.loc[zd.index == 0, "Sum of Net Energy (kW)"] = zd["Net Energy (kW)"]
+
+            for i in range(1, len(zd)):
+
+                zd.loc[
+                    (zd.index > 0) &
+                    (zd["Sum of Net Energy (kW)"].shift(1) > 0), 
+                    "Sum of Net Energy (kW)"] = zd["Net Energy (kW)"] + zd["Sum of Net Energy (kW)"].shift(1)
+                
+                zd.loc[
+                    (zd.index > 0) &
+                    (zd["Net Energy (kW)"] <= 0) &
+                    (zd["Sum of Net Energy (kW)"].shift(1) < 0), 
+                    "Sum of Net Energy (kW)"] = zd["Net Energy (kW)"] + zd["Sum of Net Energy (kW)"].shift(1)
+                
+                zd.loc[
+                    (zd.index > 0) &
+                    (zd["Net Energy (kW)"] > 0) &
+                    (zd["Sum of Net Energy (kW)"].shift(1) < 0), 
+                    "Sum of Net Energy (kW)"] = zd["Net Energy (kW)"]
+                        
+            zd.loc[
+                (zd["Sum of Net Energy (kW)"] > 0) & 
+                (zd["Sum of Net Energy (kW)"].shift(1, fill_value=0) < 0), 'Pinch Point'] = True
+            
             zd["Pinch Point"] = zd["Pinch Point"].fillna(False)
 
             mdf.append(zd.set_index(['Degree Approach', 'HotStartT', 
                                     'HotEndT', 'ColdStartT', 'ColdEndT']
                                     ).round(2))
             
-            if zd['Pinch Point'].value_counts()[True] == 1:
+            if zd['Pinch Point'].value_counts().get(True, 0) == 1:
 
                 udf = pd.concat([
                     pd.DataFrame({
                         "Degree Approach": [x],
                         "Heating Utility": [zd.at[zd.loc[zd["Pinch Point"] == True].index.values[0] - 1,
-                                                  "Sum of Net Energy (kW)"]],
+                                                "Sum of Net Energy (kW)"]],
                         "Cooling Utility": [zd["Sum of Net Energy (kW)"].iloc[-1]]
                     }),
                     udf
@@ -179,7 +202,7 @@ class PinchProj:
                     }),
                     udf
                 ])
-                
+        
         PinchProj.Df_To_HTML(mdf)
         
         fig = go.Figure()

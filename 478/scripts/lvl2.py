@@ -41,11 +41,9 @@ class Heuristics:
         pass
 
     def P_701():
-        # not real numbers
-        flow = q(10965, 'kg/h')
-        density = q(800, 'kg/m**3')
-        dP = q(29 - 4, 'psi').to('bar')
-        ###
+        flow = q(182.75, 'kg/min')
+        density = q(842.25, 'kg/m**3')
+        dP = q(21 - 4.9, 'bar')
 
         power = q(1.67 
                  * (flow / density).to('m**3/min').magnitude 
@@ -53,13 +51,16 @@ class Heuristics:
         
         head = (dP / (density * q(1, 'standard_gravity'))).to('ft')
 
-        shaftPower = power / .8
+        shaftEff =  (flow / density * (.7 - .45) / q(500  - 100, 'gal/min') + .7)
+        shaftPower = power / shaftEff
+        powerMotor = shaftPower / .8 
 
         print(
             '=== Calculations for unit P-701 ===', 
             f"fluid power: {power}", 
             f"fluid head: {head}", 
             f"shaft power: {shaftPower}",
+            f"Power, motor: {powerMotor}",
             sep='\n')
 
     def HeatX(unit, th1, th2, tc1, tc2, Q, U, F):
@@ -78,7 +79,7 @@ class Heuristics:
             q(60.2, 'degC'), # th1, stream-3
             q(150, 'degC'), # th2, stream-4
             q(30, 'degC'), # tc1
-            q(40, 'degC'), # tc2
+            q(45, 'degC'), # tc2
             q(61400, 'MJ/h'), # Q, given
             q(1140, 'W/m**2/delta_degC'), # U, item 8
             .9, # F, item 1
@@ -89,7 +90,7 @@ class Heuristics:
             q(224.6, 'degC'), # th1, stream-5
             q(68.5, 'degC'), # th2, stream-6
             q(30, 'degC'), # tc1
-            q(40, 'degC'), # tc2
+            q(45, 'degC'), # tc2
             q(113300, 'MJ/h'), # Q, given
             q(850, 'W/m**2/delta_degC'), # U, item 8
             .9 # F, item 1
@@ -97,4 +98,4 @@ class Heuristics:
 
         Heuristics.P_701()
 
-Heuristics.T_702()
+Heuristics.Equipment()
