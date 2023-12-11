@@ -3,7 +3,7 @@ import pint
 import plotly.graph_objects as go
 import plotly.io as pio
 
-pio.templates.default = "plotly_dark"
+pio.templates.default = "seaborn"
 
 uReg = pint.UnitRegistry(autoconvert_offset_to_baseunit = True)
 uReg.default_format = "~P"
@@ -97,6 +97,7 @@ class PinchProj:
                             ).format(precision=2
                             ).to_html())
                 file.write("<br>")
+    
     def main(self):
 
         zdf = pd.DataFrame()
@@ -230,4 +231,52 @@ class PinchProj:
         
         fig.show()
 
-PinchProj().main()
+    @staticmethod
+    def SteamEAOC():
+        df = pd.read_csv('steam_eaoc.csv')
+
+        fig = go.Figure()
+        for x in [5, 10, 15, 20]:
+            fig.add_trace(
+                go.Scatter(
+                    x=df["Temp"],
+                    y=df[f"{x} degree"],
+                    mode='lines',
+                    name=f'{x} degree EAOC'
+                ))
+            
+        fig.update_layout(
+            title='Temperature vs Steam EAOC',
+            xaxis_title='Temperature',
+            yaxis_title='Steam EAOC',
+            legend=dict(title='Legend'),
+            ).show()
+        
+    @staticmethod
+    def OverallEAOC():
+        df = pd.DataFrame([
+            [5, 3977093],
+            [10, 3933124],
+            [15, 4000998],
+            [20, 3638151]
+        ], columns=["Degree Approach", 'Overall EAOC ($)'])
+
+        textAnnotations = [dict(
+            x=x,
+            y=4200000, 
+            text=str('{:,}'.format(y)),
+            showarrow=False,
+        ) for x, y in zip(df["Degree Approach"], df["Overall EAOC ($)"].round(0))]
+
+        fig = go.Figure()
+        fig.add_trace(
+            go.Bar(
+                x=df["Degree Approach"],
+                y=df[f"Overall EAOC ($)"],
+            )).update_layout(title='Temperature vs Overall EAOC', 
+                             annotations=textAnnotations,
+                             xaxis_title='Degree Approach',
+                             yaxis_title='Overall EOAC ($)'
+                            ).show()
+            
+PinchProj().OverallEAOC()
