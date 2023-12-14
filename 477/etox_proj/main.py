@@ -3,7 +3,7 @@ import pint
 import plotly.graph_objects as go
 import plotly.io as pio
 
-pio.templates.default = "plotly_dark"
+pio.templates.default = "seaborn"
 
 uReg = pint.UnitRegistry(autoconvert_offset_to_baseunit = True)
 uReg.default_format = "~P"
@@ -55,9 +55,9 @@ class AnotherProject:
                     y=self.df["Profit (million_dollars/yr)"], 
                     mode='markers', 
                     marker=dict(
-                        color=self.df["feed stage"],
+                        color=self.df["reflux ratio"],
                         colorscale='Jet',
-                        colorbar=dict(title='Feed Tray')
+                        colorbar=dict(title='reflux ratio+')
                     )
                   ))
     
@@ -66,4 +66,20 @@ class AnotherProject:
         yaxis_title='Profit (million dollars/year)',
     ).show()
 
-AnotherProject().trayProfit()
+  def BestSetups(self):
+    df, mdf = self.df, pd.DataFrame()
+
+    for x in df["number of stages"].unique():
+      d = df.loc[(df["number of stages"] == x)]
+      mdf = pd.concat([mdf, 
+                      d.loc[(d["Profit (million_dollars/yr)"] == d["Profit (million_dollars/yr)"].max())]
+                      ], axis=0)
+    
+    print(mdf.drop(columns=['heating cost (million_dollars/yr)', 
+                            "cooling cost (million_dollars/yr)",
+                            "Revenue (million_dollars/yr)"
+                            ]))
+
+
+
+AnotherProject().BestSetups()
