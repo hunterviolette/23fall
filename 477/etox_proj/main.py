@@ -68,6 +68,7 @@ class AnotherProject:
                     ))
       
       fig.update_layout(
+          title=f'Number of Trays vs. {x.capitalize()} vs. Profit',
           xaxis_title='Number of trays',
           yaxis_title='Profit (million dollars/year)',
       ).show()
@@ -117,6 +118,8 @@ class AnotherProject:
 
       ).show()
       
-    print(self.mdf)
+    self.mdf.to_csv('optimal_columns.csv')
 
-AnotherProject().trayDf()
+x = AnotherProject()
+x.trayFigs()
+x.trayDf()
