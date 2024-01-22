@@ -29,7 +29,7 @@ class PinchProj:
         )
         
         #self.approachT = [0, 5, 10, 15, 20]
-        self.approachT = [x for x in range(2, 25, 1)]
+        self.approachT = [x for x in range(5, 100, 5)]
 
     @staticmethod
     def HeatDuty(
@@ -279,4 +279,4 @@ class PinchProj:
                              yaxis_title='Overall EOAC ($)'
                             ).show()
             
-PinchProj().OverallEAOC()
+PinchProj().SteamEAOC()
